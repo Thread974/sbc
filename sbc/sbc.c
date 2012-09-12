@@ -51,6 +51,7 @@
 #include "sbc_primitives.h"
 
 #define SBC_SYNCWORD	0x9C
+#define MSBC_SYNCWORD	0xAD
 
 /* This structure contains an unpacked SBC frame.
    Yes, there is probably quite some unused space herein */
@@ -373,9 +374,11 @@ static void sbc_calculate_bits(const struct sbc_frame *frame, int (*bits)[8])
  *  -2   Sync byte incorrect
  *  -3   CRC8 incorrect
  *  -4   Bitpool value out of bounds
+ *  -5   msbc reserved byte 1 not 0
+ *  -6   msbc reserved byte 2 not 0
  */
-static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
-								size_t len)
+static int sbc_unpack_frame(sbc_t *sbc, const uint8_t *data,
+		struct sbc_frame *frame, size_t len)
 {
 	unsigned int consumed;
 	/* Will copy the parts of the header that are relevant to crc
@@ -393,53 +396,72 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 	if (len < 4)
 		return -1;
 
-	if (data[0] != SBC_SYNCWORD)
-		return -2;
+	if (sbc->flags & SBC_MSBC) {
+		if (data[0] != MSBC_SYNCWORD)
+			return -2;
+		if (data[1] != 0)
+			return -5;
+		if (data[2] != 0)
+			return -6;
 
-	frame->frequency = (data[1] >> 6) & 0x03;
-
-	frame->block_mode = (data[1] >> 4) & 0x03;
-	switch (frame->block_mode) {
-	case SBC_BLK_4:
-		frame->blocks = 4;
-		break;
-	case SBC_BLK_8:
-		frame->blocks = 8;
-		break;
-	case SBC_BLK_12:
-		frame->blocks = 12;
-		break;
-	case SBC_BLK_16:
-		frame->blocks = 16;
-		break;
-	}
-
-	frame->mode = (data[1] >> 2) & 0x03;
-	switch (frame->mode) {
-	case MONO:
+		frame->frequency = SBC_FREQ_16000;
+		frame->block_mode = SBC_BLK_4;
+		frame->blocks = 15;
+		frame->allocation = LOUDNESS;
+		frame->mode = MONO;
 		frame->channels = 1;
-		break;
-	case DUAL_CHANNEL:	/* fall-through */
-	case STEREO:
-	case JOINT_STEREO:
-		frame->channels = 2;
-		break;
+		frame->subband_mode = 1;
+		frame->subbands = frame->subband_mode ? 8 : 4;
+		frame->bitpool = 26;
+	} else {
+		if (data[0] != SBC_SYNCWORD)
+			return -2;
+
+		frame->frequency = (data[1] >> 6) & 0x03;
+
+		frame->block_mode = (data[1] >> 4) & 0x03;
+		switch (frame->block_mode) {
+		case SBC_BLK_4:
+			frame->blocks = 4;
+			break;
+		case SBC_BLK_8:
+			frame->blocks = 8;
+			break;
+		case SBC_BLK_12:
+			frame->blocks = 12;
+			break;
+		case SBC_BLK_16:
+			frame->blocks = 16;
+			break;
+		}
+
+		frame->mode = (data[1] >> 2) & 0x03;
+		switch (frame->mode) {
+		case MONO:
+			frame->channels = 1;
+			break;
+		case DUAL_CHANNEL:	/* fall-through */
+		case STEREO:
+		case JOINT_STEREO:
+			frame->channels = 2;
+			break;
+		}
+
+		frame->allocation = (data[1] >> 1) & 0x01;
+
+		frame->subband_mode = (data[1] & 0x01);
+		frame->subbands = frame->subband_mode ? 8 : 4;
+
+		frame->bitpool = data[2];
+
+		if ((frame->mode == MONO || frame->mode == DUAL_CHANNEL) &&
+				frame->bitpool > 16 * frame->subbands)
+			return -4;
+
+		if ((frame->mode == STEREO || frame->mode == JOINT_STEREO) &&
+				frame->bitpool > 32 * frame->subbands)
+			return -4;
 	}
-
-	frame->allocation = (data[1] >> 1) & 0x01;
-
-	frame->subband_mode = (data[1] & 0x01);
-	frame->subbands = frame->subband_mode ? 8 : 4;
-
-	frame->bitpool = data[2];
-
-	if ((frame->mode == MONO || frame->mode == DUAL_CHANNEL) &&
-			frame->bitpool > 16 * frame->subbands)
-		return -4;
-
-	if ((frame->mode == STEREO || frame->mode == JOINT_STEREO) &&
-			frame->bitpool > 32 * frame->subbands)
-		return -4;
 
 	/* data[3] is crc, we're checking it later */
 
@@ -764,10 +786,9 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
  * -99 not implemented
  */
 
-static SBC_ALWAYS_INLINE ssize_t sbc_pack_frame_internal(uint8_t *data,
-					struct sbc_frame *frame, size_t len,
-					int frame_subbands, int frame_channels,
-					int joint)
+static SBC_ALWAYS_INLINE ssize_t sbc_pack_frame_internal(sbc_t *sbc,
+			uint8_t *data, struct sbc_frame *frame, size_t len,
+			int frame_subbands, int frame_channels, int joint)
 {
 	/* Bitstream writer starts from the fourth byte */
 	uint8_t *data_ptr = data + 4;
@@ -785,37 +806,43 @@ static SBC_ALWAYS_INLINE ssize_t sbc_pack_frame_internal(uint8_t *data,
 	uint32_t levels[2][8];	/* levels are derived from that */
 	uint32_t sb_sample_delta[2][8];
 
-	data[0] = SBC_SYNCWORD;
+	if (sbc->flags & SBC_MSBC) {
+		data[0] = MSBC_SYNCWORD;
+		data[1] = 0;
+		data[2] = 0;
+	} else {
+		data[0] = SBC_SYNCWORD;
 
-	data[1] = (frame->frequency & 0x03) << 6;
+		data[1] = (frame->frequency & 0x03) << 6;
 
-	data[1] |= (frame->block_mode & 0x03) << 4;
+		data[1] |= (frame->block_mode & 0x03) << 4;
 
-	data[1] |= (frame->mode & 0x03) << 2;
+		data[1] |= (frame->mode & 0x03) << 2;
 
-	data[1] |= (frame->allocation & 0x01) << 1;
+		data[1] |= (frame->allocation & 0x01) << 1;
 
-	switch (frame_subbands) {
-	case 4:
-		/* Nothing to do */
-		break;
-	case 8:
-		data[1] |= 0x01;
-		break;
-	default:
-		return -4;
-		break;
+		switch (frame_subbands) {
+		case 4:
+			/* Nothing to do */
+			break;
+		case 8:
+			data[1] |= 0x01;
+			break;
+		default:
+			return -4;
+			break;
+		}
+
+		data[2] = frame->bitpool;
+
+		if ((frame->mode == MONO || frame->mode == DUAL_CHANNEL) &&
+				frame->bitpool > frame_subbands << 4)
+			return -5;
+
+		if ((frame->mode == STEREO || frame->mode == JOINT_STEREO) &&
+				frame->bitpool > frame_subbands << 5)
+			return -5;
 	}
-
-	data[2] = frame->bitpool;
-
-	if ((frame->mode == MONO || frame->mode == DUAL_CHANNEL) &&
-			frame->bitpool > frame_subbands << 4)
-		return -5;
-
-	if ((frame->mode == STEREO || frame->mode == JOINT_STEREO) &&
-			frame->bitpool > frame_subbands << 5)
-		return -5;
 
 	/* Can't fill in crc yet */
 
@@ -881,23 +908,23 @@ static SBC_ALWAYS_INLINE ssize_t sbc_pack_frame_internal(uint8_t *data,
 	return data_ptr - data;
 }
 
-static ssize_t sbc_pack_frame(uint8_t *data, struct sbc_frame *frame, size_t len,
-								int joint)
+static ssize_t sbc_pack_frame(sbc_t *sbc, uint8_t *data,
+		struct sbc_frame *frame, size_t len, int joint)
 {
 	if (frame->subbands == 4) {
 		if (frame->channels == 1)
 			return sbc_pack_frame_internal(
-				data, frame, len, 4, 1, joint);
+				sbc, data, frame, len, 4, 1, joint);
 		else
 			return sbc_pack_frame_internal(
-				data, frame, len, 4, 2, joint);
+				sbc, data, frame, len, 4, 2, joint);
 	} else {
 		if (frame->channels == 1)
 			return sbc_pack_frame_internal(
-				data, frame, len, 8, 1, joint);
+				sbc, data, frame, len, 8, 1, joint);
 		else
 			return sbc_pack_frame_internal(
-				data, frame, len, 8, 2, joint);
+				sbc, data, frame, len, 8, 2, joint);
 	}
 }
 
@@ -919,6 +946,7 @@ struct sbc_priv {
 
 static void sbc_set_defaults(sbc_t *sbc, unsigned long flags)
 {
+	sbc->flags = flags;
 	sbc->frequency = SBC_FREQ_44100;
 	sbc->mode = SBC_MODE_STEREO;
 	sbc->subbands = SBC_SB_8;
@@ -971,7 +999,7 @@ SBC_EXPORT ssize_t sbc_decode(sbc_t *sbc, const void *input, size_t input_len,
 
 	priv = sbc->priv;
 
-	framelen = sbc_unpack_frame(input, &priv->frame, input_len);
+	framelen = sbc_unpack_frame(sbc, input, &priv->frame, input_len);
 
 	if (!priv->init) {
 		sbc_decoder_init(&priv->dec_state, &priv->frame);
@@ -1047,17 +1075,32 @@ SBC_EXPORT ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
 		*written = 0;
 
 	if (!priv->init) {
-		priv->frame.frequency = sbc->frequency;
-		priv->frame.mode = sbc->mode;
-		priv->frame.channels = sbc->mode == SBC_MODE_MONO ? 1 : 2;
-		priv->frame.allocation = sbc->allocation;
-		priv->frame.subband_mode = sbc->subbands;
-		priv->frame.subbands = sbc->subbands ? 8 : 4;
-		priv->frame.block_mode = sbc->blocks;
-		priv->frame.blocks = 4 + (sbc->blocks * 4);
-		priv->frame.bitpool = sbc->bitpool;
-		priv->frame.codesize = sbc_get_codesize(sbc);
-		priv->frame.length = sbc_get_frame_length(sbc);
+		if (sbc->flags & SBC_MSBC) {
+			priv->frame.frequency = 16;
+			priv->frame.mode = SBC_MODE_MONO;
+			priv->frame.channels = 1;
+			priv->frame.allocation = LOUDNESS;
+			priv->frame.subband_mode = 8;
+			priv->frame.block_mode = 0;
+			priv->frame.blocks = 15;
+			priv->frame.subbands = 8;
+			priv->frame.bitpool = 26;
+			priv->frame.codesize = sbc_get_codesize(sbc);
+			priv->frame.length = sbc_get_frame_length(sbc);
+		} else {
+			priv->frame.frequency = sbc->frequency;
+			priv->frame.mode = sbc->mode;
+			priv->frame.channels = sbc->mode == SBC_MODE_MONO ?
+									1 : 2;
+			priv->frame.allocation = sbc->allocation;
+			priv->frame.subband_mode = sbc->subbands;
+			priv->frame.block_mode = sbc->blocks;
+			priv->frame.blocks = 4 + (sbc->blocks * 4);
+			priv->frame.subbands = sbc->subbands ? 8 : 4;
+			priv->frame.bitpool = sbc->bitpool;
+			priv->frame.codesize = sbc_get_codesize(sbc);
+			priv->frame.length = sbc_get_frame_length(sbc);
+		}
 
 		sbc_encoder_init(&priv->enc_state, &priv->frame);
 		priv->init = 1;
@@ -1102,13 +1145,15 @@ SBC_EXPORT ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
 		int j = priv->enc_state.sbc_calc_scalefactors_j(
 			priv->frame.sb_sample_f, priv->frame.scale_factor,
 			priv->frame.blocks, priv->frame.subbands);
-		framelen = sbc_pack_frame(output, &priv->frame, output_len, j);
+		framelen = sbc_pack_frame(sbc, output,
+				&priv->frame, output_len, j);
 	} else {
 		priv->enc_state.sbc_calc_scalefactors(
 			priv->frame.sb_sample_f, priv->frame.scale_factor,
 			priv->frame.blocks, priv->frame.channels,
 			priv->frame.subbands);
-		framelen = sbc_pack_frame(output, &priv->frame, output_len, 0);
+		framelen = sbc_pack_frame(sbc, output,
+				&priv->frame, output_len, 0);
 	}
 
 	if (written)
@@ -1138,10 +1183,17 @@ SBC_EXPORT size_t sbc_get_frame_length(sbc_t *sbc)
 		return priv->frame.length;
 
 	subbands = sbc->subbands ? 8 : 4;
-	blocks = 4 + (sbc->blocks * 4);
-	channels = sbc->mode == SBC_MODE_MONO ? 1 : 2;
-	joint = sbc->mode == SBC_MODE_JOINT_STEREO ? 1 : 0;
-	bitpool = sbc->bitpool;
+	if (sbc->flags & SBC_MSBC) {
+		blocks = 15;
+		channels = 1;
+		joint = 0;
+		bitpool = 26;
+	} else {
+		blocks = 4 + (sbc->blocks * 4);
+		channels = sbc->mode == SBC_MODE_MONO ? 1 : 2;
+		joint = sbc->mode == SBC_MODE_JOINT_STEREO ? 1 : 0;
+		bitpool = sbc->bitpool;
+	}
 
 	ret = 4 + (4 * subbands * channels) / 8;
 	/* This term is not always evenly divide so we round it up */
@@ -1161,8 +1213,13 @@ SBC_EXPORT unsigned sbc_get_frame_duration(sbc_t *sbc)
 
 	priv = sbc->priv;
 	if (!priv->init) {
-		subbands = sbc->subbands ? 8 : 4;
-		blocks = 4 + (sbc->blocks * 4);
+		if (sbc->flags & SBC_MSBC) {
+			subbands = 8;
+			blocks = 15;
+		} else {
+			subbands = sbc->subbands ? 8 : 4;
+			blocks = 4 + (sbc->blocks * 4);
+		}
 	} else {
 		subbands = priv->frame.subbands;
 		blocks = priv->frame.blocks;
@@ -1198,9 +1255,15 @@ SBC_EXPORT size_t sbc_get_codesize(sbc_t *sbc)
 
 	priv = sbc->priv;
 	if (!priv->init) {
-		subbands = sbc->subbands ? 8 : 4;
-		blocks = 4 + (sbc->blocks * 4);
-		channels = sbc->mode == SBC_MODE_MONO ? 1 : 2;
+		if (sbc->flags & SBC_MSBC) {
+			subbands = 8;
+			blocks = 15;
+			channels = 1;
+		} else {
+			subbands = sbc->subbands ? 8 : 4;
+			blocks = 4 + (sbc->blocks * 4);
+			channels = sbc->mode == SBC_MODE_MONO ? 1 : 2;
+		}
 	} else {
 		subbands = priv->frame.subbands;
 		blocks = priv->frame.blocks;
