@@ -38,12 +38,13 @@
 
 struct sbc_encoder_state {
 	int position;
+	int inc;
 	int16_t SBC_ALIGNED X[2][SBC_X_BUFFER_SIZE];
 	/* Polyphase analysis filter for 4 subbands configuration,
-	 * it handles 4 blocks at once */
+	 * it handles "inc" blocks at once */
 	void (*sbc_analyze_4b_4s)(int16_t *x, int32_t *out, int out_stride);
 	/* Polyphase analysis filter for 8 subbands configuration,
-	 * it handles 4 blocks at once */
+	 * it handles "inc" blocks at once */
 	void (*sbc_analyze_4b_8s)(int16_t *x, int32_t *out, int out_stride);
 	/* Process input data (deinterleave, endian conversion, reordering),
 	 * depending on the number of subbands and input data byte order */
@@ -75,6 +76,6 @@ struct sbc_encoder_state {
  * of SBC codec. Best implementation is selected based on target CPU
  * capabilities.
  */
-void sbc_init_primitives(struct sbc_encoder_state *encoder_state);
+void sbc_init_primitives(int msbc, struct sbc_encoder_state *encoder_state);
 
 #endif

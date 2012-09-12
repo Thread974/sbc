@@ -32,6 +32,7 @@
 #include "sbc_tables.h"
 
 #include "sbc_primitives.h"
+#include "sbc_primitives_stdc.h"
 #include "sbc_primitives_mmx.h"
 #include "sbc_primitives_iwmmxt.h"
 #include "sbc_primitives_neon.h"
@@ -519,8 +520,10 @@ static int sbc_calc_scalefactors_j(
 /*
  * Detect CPU features and setup function pointers
  */
-void sbc_init_primitives(struct sbc_encoder_state *state)
+void sbc_init_primitives(int msbc, struct sbc_encoder_state *state)
 {
+	state->inc = 4;
+
 	/* Default implementation for analyze functions */
 	state->sbc_analyze_4b_4s = sbc_analyze_4b_4s_simd;
 	state->sbc_analyze_4b_8s = sbc_analyze_4b_8s_simd;
@@ -551,4 +554,7 @@ void sbc_init_primitives(struct sbc_encoder_state *state)
 #ifdef SBC_BUILD_WITH_NEON_SUPPORT
 	sbc_init_primitives_neon(state);
 #endif
+
+	if (msbc)
+		sbc_init_primitives_stdc(state);
 }

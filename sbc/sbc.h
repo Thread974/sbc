@@ -64,6 +64,9 @@ extern "C" {
 #define SBC_LE			0x00
 #define SBC_BE			0x01
 
+/* Additional features */
+#define SBC_MSBC		0x01
+
 struct sbc_struct {
 	unsigned long flags;
 
