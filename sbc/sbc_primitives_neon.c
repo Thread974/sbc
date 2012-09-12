@@ -211,8 +211,8 @@ static inline void _sbc_analyze_eight_neon(const int16_t *in, int32_t *out,
 			"d18", "d19");
 }
 
-static inline void sbc_analyze_4b_4s_neon(int16_t *x,
-						int32_t *out, int out_stride)
+static inline void sbc_analyze_4b_4s_neon(struct sbc_encoder_state *state,
+		int16_t *x, int32_t *out, int out_stride)
 {
 	/* Analyze blocks */
 	_sbc_analyze_four_neon(x + 12, out, analysis_consts_fixed4_simd_odd);
@@ -224,8 +224,8 @@ static inline void sbc_analyze_4b_4s_neon(int16_t *x,
 	_sbc_analyze_four_neon(x + 0, out, analysis_consts_fixed4_simd_even);
 }
 
-static inline void sbc_analyze_4b_8s_neon(int16_t *x,
-						int32_t *out, int out_stride)
+static inline void sbc_analyze_4b_8s_neon(struct sbc_encoder_state *state,
+		int16_t *x, int32_t *out, int out_stride)
 {
 	/* Analyze blocks */
 	_sbc_analyze_eight_neon(x + 24, out, analysis_consts_fixed8_simd_odd);
@@ -845,36 +845,36 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 #undef PERM_BE
 #undef PERM_LE
 
-static int sbc_enc_process_input_4s_be_neon(int position, const uint8_t *pcm,
+static int sbc_enc_process_input_4s_be_neon(struct sbc_encoder_state *state, const uint8_t *pcm,
 					int16_t X[2][SBC_X_BUFFER_SIZE],
 					int nsamples, int nchannels)
 {
 	return sbc_enc_process_input_4s_neon_internal(
-		position, pcm, X, nsamples, nchannels, 1);
+		state->position, pcm, X, nsamples, nchannels, 1);
 }
 
-static int sbc_enc_process_input_4s_le_neon(int position, const uint8_t *pcm,
+static int sbc_enc_process_input_4s_le_neon(struct sbc_encoder_state *state, const uint8_t *pcm,
 					int16_t X[2][SBC_X_BUFFER_SIZE],
 					int nsamples, int nchannels)
 {
 	return sbc_enc_process_input_4s_neon_internal(
-		position, pcm, X, nsamples, nchannels, 0);
+		state->position, pcm, X, nsamples, nchannels, 0);
 }
 
-static int sbc_enc_process_input_8s_be_neon(int position, const uint8_t *pcm,
+static int sbc_enc_process_input_8s_be_neon(struct sbc_encoder_state *state, const uint8_t *pcm,
 					int16_t X[2][SBC_X_BUFFER_SIZE],
 					int nsamples, int nchannels)
 {
 	return sbc_enc_process_input_8s_neon_internal(
-		position, pcm, X, nsamples, nchannels, 1);
+		state->position, pcm, X, nsamples, nchannels, 1);
 }
 
-static int sbc_enc_process_input_8s_le_neon(int position, const uint8_t *pcm,
+static int sbc_enc_process_input_8s_le_neon(struct sbc_encoder_state *state, const uint8_t *pcm,
 					int16_t X[2][SBC_X_BUFFER_SIZE],
 					int nsamples, int nchannels)
 {
 	return sbc_enc_process_input_8s_neon_internal(
-		position, pcm, X, nsamples, nchannels, 0);
+		state->position, pcm, X, nsamples, nchannels, 0);
 }
 
 void sbc_init_primitives_neon(struct sbc_encoder_state *state)
