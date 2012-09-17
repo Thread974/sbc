@@ -537,18 +537,4 @@ void sbc_init_primitives(struct sbc_encoder_state *state)
 	state->implementation_info = "Generic C";
 
 	/* X86/AMD64 optimizations */
-#ifdef SBC_BUILD_WITH_MMX_SUPPORT
-	sbc_init_primitives_mmx(state);
-#endif
-
-	/* ARM optimizations */
-#ifdef SBC_BUILD_WITH_ARMV6_SUPPORT
-	sbc_init_primitives_armv6(state);
-#endif
-#ifdef SBC_BUILD_WITH_IWMMXT_SUPPORT
-	sbc_init_primitives_iwmmxt(state);
-#endif
-#ifdef SBC_BUILD_WITH_NEON_SUPPORT
-	sbc_init_primitives_neon(state);
-#endif
 }

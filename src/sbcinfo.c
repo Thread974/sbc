@@ -203,7 +203,7 @@ static int analyze_file(char *filename)
 		hdr.bitpool = 26;
 		hdr.channel_mode = 0x00; /* Mono */
 
-		blocks = 15;
+		blocks = 16;
 	} else {
 		blocks = (hdr.blocks + 1) * 4;
 	}

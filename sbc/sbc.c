@@ -53,10 +53,13 @@
 #define SBC_SYNCWORD	0x9C
 #define MSBC_SYNCWORD	0xAD
 
-#define MSBC_BLOCKS	16
-#define MSBC_BITPOOL	26
-#define MSBC_SUBBANDS	8
-#define MSBC_CHANNEL	1
+#define MSBC_BLOCKMODE		SBC_BLK_16
+#define MSBC_BLOCKS		16
+#define MSBC_BITPOOL		26
+#define MSBC_SUBBAND_MODE	1
+#define MSBC_SUBBANDS		8
+#define MSBC_CHANNEL		1
+#define MSBC_ALLOCATION		SBC_AM_LOUDNESS
 
 /* This structure contains an unpacked SBC frame.
    Yes, there is probably quite some unused space herein */
@@ -410,7 +413,7 @@ static int sbc_unpack_frame(sbc_t *sbc, const uint8_t *data,
 			return -6;
 
 		frame->frequency = SBC_FREQ_16000;
-		frame->block_mode = SBC_BLK_4;
+		frame->block_mode = MSBC_BLOCKMODE;
 		frame->blocks = MSBC_BLOCKS;
 		frame->allocation = LOUDNESS;
 		frame->mode = MONO;
@@ -952,11 +955,17 @@ struct sbc_priv {
 static void sbc_set_defaults(sbc_t *sbc, unsigned long flags)
 {
 	sbc->flags = flags;
-	sbc->frequency = SBC_FREQ_44100;
-	sbc->mode = SBC_MODE_STEREO;
+	if (sbc->flags & SBC_MSBC) {
+		sbc->frequency = SBC_FREQ_44100;
+		sbc->mode = SBC_MODE_STEREO;
+		sbc->bitpool = 32;
+	} else {
+		sbc->frequency = SBC_FREQ_16000;
+		sbc->mode = SBC_MODE_MONO;
+		sbc->bitpool = 26;
+	}
 	sbc->subbands = SBC_SB_8;
 	sbc->blocks = SBC_BLK_16;
-	sbc->bitpool = 32;
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	sbc->endian = SBC_LE;
 #elif __BYTE_ORDER == __BIG_ENDIAN
@@ -1010,12 +1019,21 @@ SBC_EXPORT ssize_t sbc_decode(sbc_t *sbc, const void *input, size_t input_len,
 		sbc_decoder_init(&priv->dec_state, &priv->frame);
 		priv->init = 1;
 
-		sbc->frequency = priv->frame.frequency;
-		sbc->mode = priv->frame.mode;
-		sbc->subbands = priv->frame.subband_mode;
-		sbc->blocks = priv->frame.block_mode;
-		sbc->allocation = priv->frame.allocation;
-		sbc->bitpool = priv->frame.bitpool;
+		if (sbc->flags & SBC_MSBC) {
+			sbc->frequency = SBC_FREQ_16000;
+			sbc->mode = MONO;
+			sbc->subbands = SBC_SB_8;
+			sbc->blocks = MSBC_BLOCKS;
+			sbc->allocation = LOUDNESS;
+			sbc->bitpool = MSBC_BITPOOL;
+		} else {
+			sbc->frequency = priv->frame.frequency;
+			sbc->mode = priv->frame.mode;
+			sbc->subbands = priv->frame.subband_mode;
+			sbc->blocks = priv->frame.block_mode;
+			sbc->allocation = priv->frame.allocation;
+			sbc->bitpool = priv->frame.bitpool;
+		}
 
 		priv->frame.codesize = sbc_get_codesize(sbc);
 		priv->frame.length = framelen;
@@ -1085,13 +1103,11 @@ SBC_EXPORT ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
 			priv->frame.mode = SBC_MODE_MONO;
 			priv->frame.channels = 1;
 			priv->frame.allocation = LOUDNESS;
-			priv->frame.subband_mode = 8;
-			priv->frame.block_mode = 0;
+			priv->frame.subband_mode = MSBC_SUBBAND_MODE;
+			priv->frame.block_mode = MSBC_BLOCKMODE;
 			priv->frame.blocks = MSBC_BLOCKS;
-			priv->frame.subbands = 8;
+			priv->frame.subbands = MSBC_SUBBANDS;
 			priv->frame.bitpool = MSBC_BITPOOL;
-			priv->frame.codesize = sbc_get_codesize(sbc);
-			priv->frame.length = sbc_get_frame_length(sbc);
 		} else {
 			priv->frame.frequency = sbc->frequency;
 			priv->frame.mode = sbc->mode;
@@ -1103,16 +1119,45 @@ SBC_EXPORT ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
 			priv->frame.blocks = 4 + (sbc->blocks * 4);
 			priv->frame.subbands = sbc->subbands ? 8 : 4;
 			priv->frame.bitpool = sbc->bitpool;
-			priv->frame.codesize = sbc_get_codesize(sbc);
-			priv->frame.length = sbc_get_frame_length(sbc);
 		}
+		priv->frame.codesize = sbc_get_codesize(sbc);
+		priv->frame.length = sbc_get_frame_length(sbc);
 
 		sbc_encoder_init(&priv->enc_state, &priv->frame);
 		priv->init = 1;
 	} else if (priv->frame.bitpool != sbc->bitpool) {
+		if (sbc->flags & SBC_MSBC) {
+			priv->frame.frequency = 16;
+			priv->frame.mode = SBC_MODE_MONO;
+			priv->frame.channels = 1;
+			priv->frame.allocation = LOUDNESS;
+			priv->frame.subband_mode = MSBC_SUBBAND_MODE;
+			priv->frame.block_mode = MSBC_BLOCKMODE;
+			priv->frame.blocks = MSBC_BLOCKS;
+			priv->frame.subbands = MSBC_SUBBANDS;
+			priv->frame.bitpool = MSBC_BITPOOL;
+		}
+
+		priv->frame.length = sbc_get_frame_length(sbc);
+		priv->frame.bitpool = sbc->bitpool;
+	} else {
+		if (sbc->flags & SBC_MSBC) {
+			priv->frame.frequency = 16;
+			priv->frame.mode = SBC_MODE_MONO;
+			priv->frame.channels = 1;
+			priv->frame.allocation = LOUDNESS;
+			priv->frame.subband_mode = MSBC_SUBBAND_MODE;
+			priv->frame.block_mode = MSBC_BLOCKMODE;
+			priv->frame.blocks = MSBC_BLOCKS;
+			priv->frame.subbands = MSBC_SUBBANDS;
+			priv->frame.bitpool = MSBC_BITPOOL;
+		}
+
+		priv->frame.codesize = sbc_get_codesize(sbc);
 		priv->frame.length = sbc_get_frame_length(sbc);
 		priv->frame.bitpool = sbc->bitpool;
 	}
+
 
 	/* input must be large enough to encode a complete frame */
 	if (input_len < priv->frame.codesize)
@@ -1187,13 +1232,14 @@ SBC_EXPORT size_t sbc_get_frame_length(sbc_t *sbc)
 	if (priv->init && priv->frame.bitpool == sbc->bitpool)
 		return priv->frame.length;
 
-	subbands = sbc->subbands ? 8 : 4;
 	if (sbc->flags & SBC_MSBC) {
+		subbands = MSBC_SUBBANDS;
 		blocks = MSBC_BLOCKS;
 		channels = 1;
 		joint = 0;
 		bitpool = MSBC_BITPOOL;
 	} else {
+		subbands = sbc->subbands ? 8 : 4;
 		blocks = 4 + (sbc->blocks * 4);
 		channels = sbc->mode == SBC_MODE_MONO ? 1 : 2;
 		joint = sbc->mode == SBC_MODE_JOINT_STEREO ? 1 : 0;
@@ -1219,15 +1265,20 @@ SBC_EXPORT unsigned sbc_get_frame_duration(sbc_t *sbc)
 	priv = sbc->priv;
 	if (!priv->init) {
 		if (sbc->flags & SBC_MSBC) {
-			subbands = 8;
-			blocks = 15;
+			subbands = MSBC_SUBBANDS;
+			blocks = MSBC_BLOCKS;
 		} else {
 			subbands = sbc->subbands ? 8 : 4;
 			blocks = 4 + (sbc->blocks * 4);
 		}
 	} else {
-		subbands = priv->frame.subbands;
-		blocks = priv->frame.blocks;
+		if (sbc->flags & SBC_MSBC) {
+			subbands = MSBC_SUBBANDS;
+			blocks = MSBC_BLOCKS;
+		} else {
+			subbands = priv->frame.subbands;
+			blocks = priv->frame.blocks;
+		}
 	}
 
 	switch (sbc->frequency) {
@@ -1270,9 +1321,15 @@ SBC_EXPORT size_t sbc_get_codesize(sbc_t *sbc)
 			channels = sbc->mode == SBC_MODE_MONO ? 1 : 2;
 		}
 	} else {
-		subbands = priv->frame.subbands;
-		blocks = priv->frame.blocks;
-		channels = priv->frame.channels;
+		if (sbc->flags & SBC_MSBC) {
+			subbands = 8;
+			blocks = MSBC_BLOCKS;
+			channels = 1;
+		} else {
+			subbands = priv->frame.subbands;
+			blocks = priv->frame.blocks;
+			channels = priv->frame.channels;
+		}
 	}
 
 	return subbands * blocks * channels * 2;
