@@ -53,6 +53,11 @@
 #define SBC_SYNCWORD	0x9C
 #define MSBC_SYNCWORD	0xAD
 
+#define MSBC_BLOCKS	16
+#define MSBC_BITPOOL	26
+#define MSBC_SUBBANDS	8
+#define MSBC_CHANNEL	1
+
 /* This structure contains an unpacked SBC frame.
    Yes, there is probably quite some unused space herein */
 struct sbc_frame {
@@ -406,13 +411,13 @@ static int sbc_unpack_frame(sbc_t *sbc, const uint8_t *data,
 
 		frame->frequency = SBC_FREQ_16000;
 		frame->block_mode = SBC_BLK_4;
-		frame->blocks = 15;
+		frame->blocks = MSBC_BLOCKS;
 		frame->allocation = LOUDNESS;
 		frame->mode = MONO;
 		frame->channels = 1;
 		frame->subband_mode = 1;
 		frame->subbands = frame->subband_mode ? 8 : 4;
-		frame->bitpool = 26;
+		frame->bitpool = MSBC_BITPOOL;
 	} else {
 		if (data[0] != SBC_SYNCWORD)
 			return -2;
@@ -1082,9 +1087,9 @@ SBC_EXPORT ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
 			priv->frame.allocation = LOUDNESS;
 			priv->frame.subband_mode = 8;
 			priv->frame.block_mode = 0;
-			priv->frame.blocks = 15;
+			priv->frame.blocks = MSBC_BLOCKS;
 			priv->frame.subbands = 8;
-			priv->frame.bitpool = 26;
+			priv->frame.bitpool = MSBC_BITPOOL;
 			priv->frame.codesize = sbc_get_codesize(sbc);
 			priv->frame.length = sbc_get_frame_length(sbc);
 		} else {
@@ -1184,10 +1189,10 @@ SBC_EXPORT size_t sbc_get_frame_length(sbc_t *sbc)
 
 	subbands = sbc->subbands ? 8 : 4;
 	if (sbc->flags & SBC_MSBC) {
-		blocks = 15;
+		blocks = MSBC_BLOCKS;
 		channels = 1;
 		joint = 0;
-		bitpool = 26;
+		bitpool = MSBC_BITPOOL;
 	} else {
 		blocks = 4 + (sbc->blocks * 4);
 		channels = sbc->mode == SBC_MODE_MONO ? 1 : 2;
@@ -1257,7 +1262,7 @@ SBC_EXPORT size_t sbc_get_codesize(sbc_t *sbc)
 	if (!priv->init) {
 		if (sbc->flags & SBC_MSBC) {
 			subbands = 8;
-			blocks = 15;
+			blocks = MSBC_BLOCKS;
 			channels = 1;
 		} else {
 			subbands = sbc->subbands ? 8 : 4;
