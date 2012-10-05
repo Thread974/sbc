@@ -24,6 +24,7 @@
  *
  */
 
+#include <stdio.h>
 #include <stdint.h>
 #include <limits.h>
 #include "sbc.h"
@@ -45,6 +46,25 @@ static inline void sbc_analyze_four_mmx(const int16_t *in, int32_t *out,
 		1 << (SBC_PROTO_FIXED4_SCALE - 1),
 		1 << (SBC_PROTO_FIXED4_SCALE - 1),
 	};
+	fprintf(stderr, "x: %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d\n",
+			(int)in[0], (int)in[1],
+			(int)in[2], (int)in[3],
+			(int)in[4], (int)in[5],
+			(int)in[6], (int)in[7],
+			(int)in[8+0], (int)in[8+1],
+			(int)in[8+2], (int)in[8+3],
+			(int)in[8+4], (int)in[8+5],
+			(int)in[8+6], (int)in[8+7]);
+	fprintf(stderr, "c: %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d %6d\n",
+			(int)consts[0], (int)consts[1],
+			(int)consts[2], (int)consts[3],
+			(int)consts[4], (int)consts[5],
+			(int)consts[6], (int)consts[7],
+			(int)consts[8+0], (int)consts[8+1],
+			(int)consts[8+2], (int)consts[8+3],
+			(int)consts[8+4], (int)consts[8+5],
+			(int)consts[8+6], (int)consts[8+7]);
+	fprintf(stderr, "\n");
 	__asm__ volatile (
 		"movq        (%0), %%mm0\n"
 		"movq       8(%0), %%mm1\n"
@@ -265,13 +285,17 @@ static inline void sbc_analyze_4b_8s_mmx(int16_t *x, int32_t *out,
 						int out_stride)
 {
 	/* Analyze blocks */
-	sbc_analyze_eight_mmx(x + 24, out, analysis_consts_fixed8_simd_odd);
-	out += out_stride;
-	sbc_analyze_eight_mmx(x + 16, out, analysis_consts_fixed8_simd_even);
-	out += out_stride;
-	sbc_analyze_eight_mmx(x + 8, out, analysis_consts_fixed8_simd_odd);
-	out += out_stride;
-	sbc_analyze_eight_mmx(x + 0, out, analysis_consts_fixed8_simd_even);
+	//sbc_analyze_eight_mmx(x + 24, out, analysis_consts_fixed8_simd_odd);
+	//out += out_stride;
+	//sbc_analyze_eight_mmx(x + 16, out, analysis_consts_fixed8_simd_even);
+	//out += out_stride;
+	//sbc_analyze_eight_mmx(x + 8, out, analysis_consts_fixed8_simd_odd);
+	//out += out_stride;
+	static int odd = 1;
+	sbc_analyze_eight_mmx(x + 0, out, odd ?
+			analysis_consts_fixed8_simd_odd : analysis_consts_fixed8_simd_even
+			);
+	odd = !odd;
 
 	__asm__ volatile ("emms\n");
 }

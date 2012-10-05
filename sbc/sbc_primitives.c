@@ -24,6 +24,7 @@
  *
  */
 
+#include <stdio.h>
 #include <stdint.h>
 #include <limits.h>
 #include <string.h>
@@ -251,6 +252,12 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s4_internal(
 		position -= 8;
 		if (nchannels > 0) {
 			int16_t *x = &X[0][position];
+
+			fprintf(stderr, "pcm: %6d %6d %6d %6d %6d %6d %6d %6d\n",
+			  (int)PCM(0), (int)PCM(1),
+			  (int)PCM(2), (int)PCM(3),
+			  (int)PCM(4), (int)PCM(5),
+			  (int)PCM(6), (int)PCM(7));
 			x[0]  = PCM(0 + 7 * nchannels);
 			x[1]  = PCM(0 + 3 * nchannels);
 			x[2]  = PCM(0 + 6 * nchannels);
@@ -283,6 +290,10 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 	const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 	int nsamples, int nchannels, int big_endian)
 {
+	int halfblock = (SBC_X_BUFFER_SIZE - 72 - position) % 16 ? 1 : 0;
+
+	fprintf(stderr, "\nnsamples %d, halfblock %d, position %d\n", nsamples, halfblock, position);
+
 	/* handle X buffer wraparound */
 	if (position < nsamples) {
 		if (nchannels > 0)
@@ -292,10 +303,56 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 			memcpy(&X[1][SBC_X_BUFFER_SIZE - 72], &X[1][position],
 							72 * sizeof(int16_t));
 		position = SBC_X_BUFFER_SIZE - 72;
+		fprintf(stderr, "reset position to %d\n", position);
 	}
 
 	#define PCM(i) (big_endian ? \
 		unaligned16_be(pcm + (i) * 2) : unaligned16_le(pcm + (i) * 2))
+
+	if (halfblock) {
+		nsamples -= 8;
+		/* Stay at same position */
+		if (nchannels > 0) {
+			int16_t *x = &X[0][position];
+			x[0]  = PCM(0 + 7 * nchannels);
+			x[1]  = 0;
+			x[2]  = PCM(0 + 6 * nchannels);
+			x[3]  = PCM(0 + 0 * nchannels);
+			x[4]  = PCM(0 + 5 * nchannels);
+			x[5]  = PCM(0 + 1 * nchannels);
+			x[6]  = PCM(0 + 4 * nchannels);
+			x[7]  = PCM(0 + 2 * nchannels);
+			x[8]  = PCM(0 + 3 * nchannels);
+			x[9]  = 0;
+			x[10] = 0;
+			x[11] = 0;
+			x[12] = 0;
+			x[13] = 0;
+			x[14] = 0;
+			x[15] = 0;
+		}
+		if (nchannels > 1) {
+			int16_t *x = &X[1][position];
+			x[0]  = PCM(1 + 7 * nchannels);
+			x[1]  = 0;
+			x[2]  = PCM(1 + 6 * nchannels);
+			x[3]  = PCM(1 + 0 * nchannels);
+			x[4]  = PCM(1 + 5 * nchannels);
+			x[5]  = PCM(1 + 1 * nchannels);
+			x[6]  = PCM(1 + 4 * nchannels);
+			x[7]  = PCM(1 + 2 * nchannels);
+			x[8]  = PCM(1 + 3 * nchannels);
+			x[9]  = 0;
+			x[10] = 0;
+			x[11] = 0;
+			x[12] = 0;
+			x[13] = 0;
+			x[14] = 0;
+			x[15] = 0;
+		}
+		pcm += 16 * nchannels;
+	}
+
 
 	/* copy/permutate audio samples */
 	while ((nsamples -= 16) >= 0) {
@@ -340,7 +397,54 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 		}
 		pcm += 32 * nchannels;
 	}
+
+	if (nsamples < 0) {
+		fprintf(stderr, "remaining samples: %d\n", nsamples);
+		position -= 8;
+		if (nchannels > 0) {
+			int16_t *x = &X[0][position];
+			x[0]  = 0;
+			x[1]  = PCM(0 + 7 * nchannels);
+			x[2]  = 0;
+			x[3]  = 0;
+			x[4]  = 0;
+			x[5]  = 0;
+			x[6]  = 0;
+			x[7]  = 0;
+			x[8]  = 0;
+			x[9]  = PCM(0 + 3 * nchannels);
+			x[10] = PCM(0 + 6 * nchannels);
+			x[11] = PCM(0 + 0 * nchannels);
+			x[12] = PCM(0 + 5 * nchannels);
+			x[13] = PCM(0 + 1 * nchannels);
+			x[14] = PCM(0 + 4 * nchannels);
+			x[15] = PCM(0 + 2 * nchannels);
+		}
+		if (nchannels > 1) {
+			int16_t *x = &X[1][position];
+			x[0]  = 0;
+			x[1]  = PCM(1 + 7 * nchannels);
+			x[2]  = 0;
+			x[3]  = 0;
+			x[4]  = 0;
+			x[5]  = 0;
+			x[6]  = 0;
+			x[7]  = 0;
+			x[8]  = 0;
+			x[9]  = PCM(1 + 3 * nchannels);
+			x[10] = PCM(1 + 6 * nchannels);
+			x[11] = PCM(1 + 0 * nchannels);
+			x[12] = PCM(1 + 5 * nchannels);
+			x[13] = PCM(1 + 1 * nchannels);
+			x[14] = PCM(1 + 4 * nchannels);
+			x[15] = PCM(1 + 2 * nchannels);
+		}
+		pcm += 16 * nchannels;
+	}
+
 	#undef PCM
+
+	fprintf(stderr, "nsamples %d, position %d\n", nsamples, position);
 
 	return position;
 }
@@ -522,7 +626,7 @@ static int sbc_calc_scalefactors_j(
  */
 void sbc_init_primitives(int msbc, struct sbc_encoder_state *state)
 {
-	state->inc = 4;
+	state->inc = 1;
 
 	/* Default implementation for analyze functions */
 	state->sbc_analyze_4b_4s = sbc_analyze_4b_4s_simd;
@@ -555,6 +659,6 @@ void sbc_init_primitives(int msbc, struct sbc_encoder_state *state)
 	sbc_init_primitives_neon(state);
 #endif
 
-	if (msbc)
-		sbc_init_primitives_stdc(state);
+	//if (msbc)
+	//	sbc_init_primitives_stdc(state);
 }
