@@ -131,6 +131,29 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 		1 << (SBC_PROTO_FIXED8_SCALE - 1),
 		1 << (SBC_PROTO_FIXED8_SCALE - 1),
 	};
+	fprintf(stderr, "x %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n"
+			"  %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n"
+			"  %6d %6d %6d %6d %6d %6d %6d %6d\n",
+			(int)in[0], (int)in[1],
+			(int)in[2], (int)in[3],
+			(int)in[4], (int)in[5],
+			(int)in[6], (int)in[7],
+			(int)in[8+0], (int)in[8+1],
+			(int)in[8+2], (int)in[8+3],
+			(int)in[8+4], (int)in[8+5],
+			(int)in[8+6], (int)in[8+7],
+			(int)in[16+0], (int)in[16+1],
+			(int)in[16+2], (int)in[16+3],
+			(int)in[16+4], (int)in[16+5],
+			(int)in[16+6], (int)in[16+7],
+			(int)in[24+0], (int)in[24+1],
+			(int)in[24+2], (int)in[24+3],
+			(int)in[24+4], (int)in[24+5],
+			(int)in[24+6], (int)in[24+7],
+			(int)in[32+0], (int)in[32+1],
+			(int)in[32+2], (int)in[32+3],
+			(int)in[32+4], (int)in[32+5],
+			(int)in[32+6], (int)in[32+7]);
 	__asm__ volatile (
 		"movq        (%0), %%mm0\n"
 		"movq       8(%0), %%mm1\n"

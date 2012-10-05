@@ -290,7 +290,7 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 	const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 	int nsamples, int nchannels, int big_endian)
 {
-	int halfblock = (SBC_X_BUFFER_SIZE - 72 - position) % 16 ? 1 : 0;
+	static int halfblock = 0; /* (SBC_X_BUFFER_SIZE - 72 - position) % 16 ? 1 : 0; */
 
 	fprintf(stderr, "\nnsamples %d, halfblock %d, position %d\n", nsamples, halfblock, position);
 
@@ -310,12 +310,13 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 		unaligned16_be(pcm + (i) * 2) : unaligned16_le(pcm + (i) * 2))
 
 	if (halfblock) {
+		halfblock = 0;
 		nsamples -= 8;
 		/* Stay at same position */
 		if (nchannels > 0) {
 			int16_t *x = &X[0][position];
 			x[0]  = PCM(0 + 7 * nchannels);
-			x[1]  = 0;
+			//x[1]  = 0;
 			x[2]  = PCM(0 + 6 * nchannels);
 			x[3]  = PCM(0 + 0 * nchannels);
 			x[4]  = PCM(0 + 5 * nchannels);
@@ -323,18 +324,23 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 			x[6]  = PCM(0 + 4 * nchannels);
 			x[7]  = PCM(0 + 2 * nchannels);
 			x[8]  = PCM(0 + 3 * nchannels);
-			x[9]  = 0;
-			x[10] = 0;
-			x[11] = 0;
-			x[12] = 0;
-			x[13] = 0;
-			x[14] = 0;
-			x[15] = 0;
+			//x[9]  = 0;
+			//x[10] = 0;
+			//x[11] = 0;
+			//x[12] = 0;
+			//x[13] = 0;
+			//x[14] = 0;
+			//x[15] = 0;
+		fprintf(stderr, "samples: %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
+			(int)x[0], (int)x[1], (int)x[2], (int)x[3],
+			(int)x[4], (int)x[5], (int)x[6], (int)x[7],
+			(int)x[8], (int)x[9], (int)x[10], (int)x[11],
+			(int)x[12], (int)x[13], (int)x[14], (int)x[15]);
 		}
 		if (nchannels > 1) {
 			int16_t *x = &X[1][position];
 			x[0]  = PCM(1 + 7 * nchannels);
-			x[1]  = 0;
+			//x[1]  = 0;
 			x[2]  = PCM(1 + 6 * nchannels);
 			x[3]  = PCM(1 + 0 * nchannels);
 			x[4]  = PCM(1 + 5 * nchannels);
@@ -342,20 +348,20 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 			x[6]  = PCM(1 + 4 * nchannels);
 			x[7]  = PCM(1 + 2 * nchannels);
 			x[8]  = PCM(1 + 3 * nchannels);
-			x[9]  = 0;
-			x[10] = 0;
-			x[11] = 0;
-			x[12] = 0;
-			x[13] = 0;
-			x[14] = 0;
-			x[15] = 0;
+			//x[9]  = 0;
+			//x[10] = 0;
+			//x[11] = 0;
+			//x[12] = 0;
+			//x[13] = 0;
+			//x[14] = 0;
+			//x[15] = 0;
 		}
 		pcm += 16 * nchannels;
 	}
 
 
 	/* copy/permutate audio samples */
-	while ((nsamples -= 16) >= 0) {
+	while (nsamples >= 16) {
 		position -= 16;
 		if (nchannels > 0) {
 			int16_t *x = &X[0][position];
@@ -396,11 +402,13 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 			x[15] = PCM(1 + 2 * nchannels);
 		}
 		pcm += 32 * nchannels;
+		nsamples -= 16;
 	}
 
-	if (nsamples < 0) {
+	if (nsamples == 8) {
 		fprintf(stderr, "remaining samples: %d\n", nsamples);
-		position -= 8;
+		position -= 16; /* position moves by 16 since next halfblock wont move */
+		halfblock = 1;
 		if (nchannels > 0) {
 			int16_t *x = &X[0][position];
 			x[0]  = 0;
@@ -419,6 +427,8 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 			x[13] = PCM(0 + 1 * nchannels);
 			x[14] = PCM(0 + 4 * nchannels);
 			x[15] = PCM(0 + 2 * nchannels);
+			fprintf(stderr, "remaining samples: %d (%d %d %d %d %d %d %d %d)\n", nsamples,
+					(int)x[1], (int)x[9], (int)x[10], (int)x[11], (int)x[12], (int)x[13], (int)x[14], (int)x[15]);
 		}
 		if (nchannels > 1) {
 			int16_t *x = &X[1][position];
