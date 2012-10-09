@@ -131,29 +131,26 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 		1 << (SBC_PROTO_FIXED8_SCALE - 1),
 		1 << (SBC_PROTO_FIXED8_SCALE - 1),
 	};
-	fprintf(stderr, "x %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n"
-			"  %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n"
-			"  %6d %6d %6d %6d %6d %6d %6d %6d\n",
-			(int)in[0], (int)in[1],
-			(int)in[2], (int)in[3],
-			(int)in[4], (int)in[5],
-			(int)in[6], (int)in[7],
-			(int)in[8+0], (int)in[8+1],
-			(int)in[8+2], (int)in[8+3],
-			(int)in[8+4], (int)in[8+5],
-			(int)in[8+6], (int)in[8+7],
-			(int)in[16+0], (int)in[16+1],
-			(int)in[16+2], (int)in[16+3],
-			(int)in[16+4], (int)in[16+5],
-			(int)in[16+6], (int)in[16+7],
-			(int)in[24+0], (int)in[24+1],
-			(int)in[24+2], (int)in[24+3],
-			(int)in[24+4], (int)in[24+5],
-			(int)in[24+6], (int)in[24+7],
-			(int)in[32+0], (int)in[32+1],
-			(int)in[32+2], (int)in[32+3],
-			(int)in[32+4], (int)in[32+5],
-			(int)in[32+6], (int)in[32+7]);
+	int halfblock = (in[0] == 0 && in[2] == 0 && in[3] == 0 &&
+			in[4] == 0 && in[5] == 0 && in[6] == 0 && in[7] == 0 &&
+			in[8] == 0);
+	int i;
+	fprintf(stderr, "packet %s\n", halfblock ? "halfblock":"");
+	for (i = 0; i < 96; i+=16) {
+		fprintf(stderr, "  %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n",
+			(int)in[i+0], (int)in[i+1],
+			(int)in[i+2], (int)in[i+3],
+			(int)in[i+4], (int)in[i+5],
+			(int)in[i+6], (int)in[i+7],
+			(int)in[i+8], (int)in[i+9],
+			(int)in[i+10], (int)in[i+11],
+			(int)in[i+12], (int)in[i+13],
+			(int)in[i+14], (int)in[i+15]);
+	}
+	fprintf(stderr, "\n");
+
+	if (halfblock)
+		goto halfblock;
 	__asm__ volatile (
 		"movq        (%0), %%mm0\n"
 		"movq       8(%0), %%mm1\n"
@@ -278,6 +275,160 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 		"movq       %%mm3, %%mm7\n"
 		"pmaddwd  272(%1), %%mm3\n"
 		"pmaddwd  280(%1), %%mm7\n"
+		"paddd      %%mm3, %%mm0\n"
+		"paddd      %%mm7, %%mm5\n"
+		"\n"
+		"movq       %%mm0, 16(%3)\n"
+		"movq       %%mm5, 24(%3)\n"
+		:
+		: "r" (in), "r" (consts), "r" (&round_c), "r" (out),
+			"i" (SBC_PROTO_FIXED8_SCALE)
+		: "cc", "memory");
+	return;
+halfblock:
+	/* Use zeroed tables */
+	if (consts == analysis_consts_fixed8_simd_even)
+		consts = analysis_consts_fixed8_simd_even_0;
+	if (consts == analysis_consts_fixed8_simd_odd)
+		consts = analysis_consts_fixed8_simd_odd_0;
+
+	__asm__ volatile (
+		"movq        (%0), %%mm0\n"
+		"movq       8(%0), %%mm1\n"
+		"movq      16(%0), %%mm2\n"
+		"movq      24(%0), %%mm3\n"
+		"pmaddwd     (%1), %%mm0\n"
+		"pmaddwd    8(%1), %%mm1\n"
+		"pmaddwd   16(%1), %%mm2\n"
+		"pmaddwd   24(%1), %%mm3\n"
+		"paddd       (%2), %%mm0\n"
+		"paddd       (%2), %%mm1\n"
+		"paddd       (%2), %%mm2\n"
+		"paddd       (%2), %%mm3\n"
+		"\n"
+		"movq      32(%0), %%mm4\n"
+		"movq      40(%0), %%mm5\n"
+		"movq      48(%0), %%mm6\n"
+		"movq      56(%0), %%mm7\n"
+		"pmaddwd   32(%1), %%mm4\n"
+		"pmaddwd   40(%1), %%mm5\n"
+		"pmaddwd   48(%1), %%mm6\n"
+		"pmaddwd   56(%1), %%mm7\n"
+		"paddd      %%mm4, %%mm0\n"
+		"paddd      %%mm5, %%mm1\n"
+		"paddd      %%mm6, %%mm2\n"
+		"paddd      %%mm7, %%mm3\n"
+		"\n"
+		"movq      64(%0), %%mm4\n"
+		"movq      72(%0), %%mm5\n"
+		"movq      80(%0), %%mm6\n"
+		"movq      88(%0), %%mm7\n"
+		"pmaddwd   64(%1), %%mm4\n"
+		"pmaddwd   72(%1), %%mm5\n"
+		"pmaddwd   80(%1), %%mm6\n"
+		"pmaddwd   88(%1), %%mm7\n"
+		"paddd      %%mm4, %%mm0\n"
+		"paddd      %%mm5, %%mm1\n"
+		"paddd      %%mm6, %%mm2\n"
+		"paddd      %%mm7, %%mm3\n"
+		"\n"
+		"movq      96(%0), %%mm4\n"
+		"movq     104(%0), %%mm5\n"
+		"movq     112(%0), %%mm6\n"
+		"movq     120(%0), %%mm7\n"
+		"pmaddwd   96(%1), %%mm4\n"
+		"pmaddwd  104(%1), %%mm5\n"
+		"pmaddwd  112(%1), %%mm6\n"
+		"pmaddwd  120(%1), %%mm7\n"
+		"paddd      %%mm4, %%mm0\n"
+		"paddd      %%mm5, %%mm1\n"
+		"paddd      %%mm6, %%mm2\n"
+		"paddd      %%mm7, %%mm3\n"
+		"\n"
+		"movq     128(%0), %%mm4\n"
+		"movq     136(%0), %%mm5\n"
+		"movq     144(%0), %%mm6\n"
+		"movq     152(%0), %%mm7\n"
+		"pmaddwd  128(%1), %%mm4\n"
+		"pmaddwd  136(%1), %%mm5\n"
+		"pmaddwd  144(%1), %%mm6\n"
+		"pmaddwd  152(%1), %%mm7\n"
+		"paddd      %%mm4, %%mm0\n"
+		"paddd      %%mm5, %%mm1\n"
+		"paddd      %%mm6, %%mm2\n"
+		"paddd      %%mm7, %%mm3\n"
+		"\n"
+		"movq     160(%0), %%mm4\n"
+		"movq     168(%0), %%mm5\n"
+		"movq     174(%0), %%mm6\n"
+		"movq     192(%0), %%mm7\n"
+		"pmaddwd  200(%1), %%mm4\n"
+		"pmaddwd  208(%1), %%mm5\n"
+		"pmaddwd  216(%1), %%mm6\n"
+		"pmaddwd  224(%1), %%mm7\n"
+		"paddd      %%mm4, %%mm0\n"
+		"paddd      %%mm5, %%mm1\n"
+		"paddd      %%mm6, %%mm2\n"
+		"paddd      %%mm7, %%mm3\n"
+		"\n"
+		"psrad         %4, %%mm0\n"
+		"psrad         %4, %%mm1\n"
+		"psrad         %4, %%mm2\n"
+		"psrad         %4, %%mm3\n"
+		"\n"
+		"packssdw   %%mm0, %%mm0\n"
+		"packssdw   %%mm1, %%mm1\n"
+		"packssdw   %%mm2, %%mm2\n"
+		"packssdw   %%mm3, %%mm3\n"
+		"\n"
+		"movq       %%mm0, %%mm4\n"
+		"movq       %%mm0, %%mm5\n"
+		"pmaddwd  192(%1), %%mm4\n"
+		"pmaddwd  200(%1), %%mm5\n"
+		"\n"
+		"movq       %%mm1, %%mm6\n"
+		"movq       %%mm1, %%mm7\n"
+		"pmaddwd  224(%1), %%mm6\n"
+		"pmaddwd  232(%1), %%mm7\n"
+		"paddd      %%mm6, %%mm4\n"
+		"paddd      %%mm7, %%mm5\n"
+		"\n"
+		"movq       %%mm2, %%mm6\n"
+		"movq       %%mm2, %%mm7\n"
+		"pmaddwd  256(%1), %%mm6\n"
+		"pmaddwd  264(%1), %%mm7\n"
+		"paddd      %%mm6, %%mm4\n"
+		"paddd      %%mm7, %%mm5\n"
+		"\n"
+		"movq       %%mm3, %%mm6\n"
+		"movq       %%mm3, %%mm7\n"
+		"pmaddwd  272(%1), %%mm6\n"
+		"pmaddwd  296(%1), %%mm7\n"
+		"paddd      %%mm6, %%mm4\n"
+		"paddd      %%mm7, %%mm5\n"
+		"\n"
+		"movq       %%mm4, (%3)\n"
+		"movq       %%mm5, 8(%3)\n"
+		"\n"
+		"movq       %%mm0, %%mm5\n"
+		"pmaddwd  208(%1), %%mm0\n"
+		"pmaddwd  216(%1), %%mm5\n"
+		"\n"
+		"movq       %%mm1, %%mm7\n"
+		"pmaddwd  240(%1), %%mm1\n"
+		"pmaddwd  248(%1), %%mm7\n"
+		"paddd      %%mm1, %%mm0\n"
+		"paddd      %%mm7, %%mm5\n"
+		"\n"
+		"movq       %%mm2, %%mm7\n"
+		"pmaddwd  272(%1), %%mm2\n"
+		"pmaddwd  280(%1), %%mm7\n"
+		"paddd      %%mm2, %%mm0\n"
+		"paddd      %%mm7, %%mm5\n"
+		"\n"
+		"movq       %%mm3, %%mm7\n"
+		"pmaddwd  304(%1), %%mm3\n"
+		"pmaddwd  314(%1), %%mm7\n"
 		"paddd      %%mm3, %%mm0\n"
 		"paddd      %%mm7, %%mm5\n"
 		"\n"

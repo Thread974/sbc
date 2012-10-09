@@ -429,6 +429,16 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 			x[15] = PCM(0 + 2 * nchannels);
 			fprintf(stderr, "remaining samples: %d (%d %d %d %d %d %d %d %d)\n", nsamples,
 					(int)x[1], (int)x[9], (int)x[10], (int)x[11], (int)x[12], (int)x[13], (int)x[14], (int)x[15]);
+#define OFF(x) (80+x)
+			x[OFF(1)] = 0;
+			x[OFF(9)] = 0;
+			x[OFF(10)] = 0;
+			x[OFF(11)] = 0;
+			x[OFF(12)] = 0;
+			x[OFF(13)] = 0;
+			x[OFF(14)] = 0;
+			x[OFF(15)] = 0;
+#undef OFF
 		}
 		if (nchannels > 1) {
 			int16_t *x = &X[1][position];
