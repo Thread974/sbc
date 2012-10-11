@@ -290,19 +290,32 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 	const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 	int nsamples, int nchannels, int big_endian)
 {
-	static int halfblock = 0; /* (SBC_X_BUFFER_SIZE - 72 - position) % 16 ? 1 : 0; */
+	static int halfblock = 0; /* (SBC_X_BUFFER_SIZE - 86 - position) % 16 ? 1 : 0; */
+	int i, ssamples = nsamples;
+	{
+		uint8_t *x = (uint8_t *)pcm;
 
-	fprintf(stderr, "\nnsamples %d, halfblock %d, position %d\n", nsamples, halfblock, position);
+		fprintf(stderr, "%s: before: nsamples %d, halfblock %d, position %d\n", __FUNCTION__, nsamples, halfblock, position);
+		#define PCMA(i) (big_endian ? \
+			unaligned16_be(x + (i) * 2) : unaligned16_le(x + (i) * 2))
+
+		for (i = 0; i < ssamples; i += 8) {
+			fprintf(stderr, "%6d %6d %6d %6d %6d %6d %6d %6d %s",
+				(int)PCMA(i+0),  (int)PCMA(i+1),  (int)PCMA(i+2),  (int)PCMA(i+3),
+				(int)PCMA(i+4),  (int)PCMA(i+5),  (int)PCMA(i+6),  (int)PCMA(i+7), ((i % 16 == 8) || ((i+8) >= ssamples)) ? "\n" : " ");
+		}
+	}
 
 	/* handle X buffer wraparound */
 	if (position < nsamples) {
 		if (nchannels > 0)
-			memcpy(&X[0][SBC_X_BUFFER_SIZE - 72], &X[0][position],
-							72 * sizeof(int16_t));
+			memcpy(&X[0][SBC_X_BUFFER_SIZE - 86], &X[0][position],
+							86 * sizeof(int16_t));
 		if (nchannels > 1)
-			memcpy(&X[1][SBC_X_BUFFER_SIZE - 72], &X[1][position],
-							72 * sizeof(int16_t));
-		position = SBC_X_BUFFER_SIZE - 72;
+			memcpy(&X[1][SBC_X_BUFFER_SIZE - 86], &X[1][position],
+							86 * sizeof(int16_t));
+		position = SBC_X_BUFFER_SIZE - 86;
+		memset(&X[0][0], 0, position * sizeof(**X));
 		fprintf(stderr, "reset position to %d\n", position);
 	}
 
@@ -331,11 +344,6 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 			//x[13] = 0;
 			//x[14] = 0;
 			//x[15] = 0;
-		fprintf(stderr, "samples: %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
-			(int)x[0], (int)x[1], (int)x[2], (int)x[3],
-			(int)x[4], (int)x[5], (int)x[6], (int)x[7],
-			(int)x[8], (int)x[9], (int)x[10], (int)x[11],
-			(int)x[12], (int)x[13], (int)x[14], (int)x[15]);
 		}
 		if (nchannels > 1) {
 			int16_t *x = &X[1][position];
@@ -464,7 +472,15 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 
 	#undef PCM
 
-	fprintf(stderr, "nsamples %d, position %d\n", nsamples, position);
+	{
+		int16_t *x = &X[0][position];
+		fprintf(stderr, "%s: after:  nsamples %d, position %d\n", __FUNCTION__, ssamples, position);
+		for (i = 0; i < ssamples; i += 8) {
+			fprintf(stderr, "%6d %6d %6d %6d %6d %6d %6d %6d %s",
+				(int)x[i+0],  (int)x[i+1],  (int)x[i+2],  (int)x[i+3],
+				(int)x[i+4],  (int)x[i+5],  (int)x[i+6],  (int)x[i+7], ((i % 16 == 8) || ((i+8) >= ssamples)) ? "\n" : " ");
+		}
+	}
 
 	return position;
 }

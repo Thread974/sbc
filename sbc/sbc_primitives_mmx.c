@@ -135,7 +135,10 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 			in[4] == 0 && in[5] == 0 && in[6] == 0 && in[7] == 0 &&
 			in[8] == 0);
 	int i;
-	fprintf(stderr, "packet %s\n", halfblock ? "halfblock":"");
+
+	if (halfblock)
+		goto halfblock;
+	fprintf(stderr, "X  %s\n", halfblock ? "halfblock":"");
 	for (i = 0; i < 96; i+=16) {
 		fprintf(stderr, "  %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n",
 			(int)in[i+0], (int)in[i+1],
@@ -146,11 +149,18 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 			(int)in[i+10], (int)in[i+11],
 			(int)in[i+12], (int)in[i+13],
 			(int)in[i+14], (int)in[i+15]);
+		fprintf(stderr, "  %6d %6d %6d %6d %6d %6d %6d %6d   %6d %6d %6d %6d %6d %6d %6d %6d\n",
+			(int)consts[i+0], (int)consts[i+1],
+			(int)consts[i+2], (int)consts[i+3],
+			(int)consts[i+4], (int)consts[i+5],
+			(int)consts[i+6], (int)consts[i+7],
+			(int)consts[i+8], (int)consts[i+9],
+			(int)consts[i+10], (int)consts[i+11],
+			(int)consts[i+12], (int)consts[i+13],
+			(int)consts[i+14], (int)consts[i+15]);
 	}
 	fprintf(stderr, "\n");
 
-	if (halfblock)
-		goto halfblock;
 	__asm__ volatile (
 		"movq        (%0), %%mm0\n"
 		"movq       8(%0), %%mm1\n"
@@ -291,6 +301,29 @@ halfblock:
 		consts = analysis_consts_fixed8_simd_even_0;
 	if (consts == analysis_consts_fixed8_simd_odd)
 		consts = analysis_consts_fixed8_simd_odd_0;
+
+	fprintf(stderr, "X0 %s\n", halfblock ? "halfblock":"");
+	for (i = 0; i < 96; i+=16) {
+		fprintf(stderr, "  %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n",
+			(int)in[i+0], (int)in[i+1],
+			(int)in[i+2], (int)in[i+3],
+			(int)in[i+4], (int)in[i+5],
+			(int)in[i+6], (int)in[i+7],
+			(int)in[i+8], (int)in[i+9],
+			(int)in[i+10], (int)in[i+11],
+			(int)in[i+12], (int)in[i+13],
+			(int)in[i+14], (int)in[i+15]);
+		fprintf(stderr, "  %6d %6d %6d %6d %6d %6d %6d %6d   %6d %6d %6d %6d %6d %6d %6d %6d\n",
+			(int)consts[i+0], (int)consts[i+1],
+			(int)consts[i+2], (int)consts[i+3],
+			(int)consts[i+4], (int)consts[i+5],
+			(int)consts[i+6], (int)consts[i+7],
+			(int)consts[i+8], (int)consts[i+9],
+			(int)consts[i+10], (int)consts[i+11],
+			(int)consts[i+12], (int)consts[i+13],
+			(int)consts[i+14], (int)consts[i+15]);
+	}
+	fprintf(stderr, "\n");
 
 	__asm__ volatile (
 		"movq        (%0), %%mm0\n"

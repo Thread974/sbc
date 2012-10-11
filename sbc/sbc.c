@@ -737,9 +737,9 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 		for (ch = 0; ch < frame->channels; ch++) {
 			x = &state->X[ch][state->position - 8 * state->inc +
 							frame->blocks * 8];
-			fprintf(stderr, "analyse: %d\n", state->position - 32 + frame->blocks * 8);
+			//fprintf(stderr, "analyse: %d\n", state->position - 32 + frame->blocks * 8);
 			for (blk = 0; blk < frame->blocks; blk += state->inc) {
-				fprintf(stderr, "analyse from position: %d\n", state->position - 32 + frame->blocks * 8 - blk * 8 * state->inc);
+				//fprintf(stderr, "analyse from position: %d\n", state->position - 32 + frame->blocks * 8 - blk * 8 * state->inc);
 				state->sbc_analyze_4b_8s(
 					x,
 					frame->sb_sample_f[blk][ch],
@@ -748,6 +748,8 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 				x -= 8 * state->inc;
 			}
 		}
+		fprintf(stderr, "press return");
+		fgetc(stdin);
 		return frame->blocks * 8;
 
 	default:
