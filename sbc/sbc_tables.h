@@ -475,7 +475,7 @@ static const FIXED_T SBC_ALIGNED analysis_consts_fixed4_simd_odd[40 + 16] = {
 #undef C3
 };
 
-static const FIXED_T SBC_ALIGNED analysis_consts_fixed8_simd_even[80 + 64 + 16] = {
+static const FIXED_T SBC_ALIGNED analysis_consts_fixed8_simd_even[80 + 16 + 64] = {
 #define C0 2.7906148894
 #define C1 2.4270044280
 #define C2 2.8015616024
@@ -544,6 +544,22 @@ static const FIXED_T SBC_ALIGNED analysis_consts_fixed8_simd_even[80 + 64 + 16] 
 	 F(1.47640169E-03 * C6), -F(3.43256425E-04 * C6),
 	 F(1.13992507E-03 * C7), -F(5.54620202E-04 * C7),
 #undef F
+	 0xFFFF,
+	 0xFFFF-1,
+	 0xFFFF-2,
+	 0xFFFF-3,
+	 0xFFFF-4,
+	 0xFFFF-5,
+	 0xFFFF-6,
+	 0xFFFF-7,
+	 0xFFFF-8,
+	 0xFFFF-9,
+	 0xFFFF-10,
+	 0xFFFF-11,
+	 0xFFFF-12,
+	 0xFFFF-13,
+	 0xFFFF-14,
+	 0xFFFF-15,
 #define F(x) F_COS8(x)
 	 F(0.7071067812 / C0),  F(0.8314696123 / C1),
 	-F(0.7071067812 / C0), -F(0.1950903220 / C1),
@@ -587,25 +603,9 @@ static const FIXED_T SBC_ALIGNED analysis_consts_fixed8_simd_even[80 + 64 + 16] 
 #undef C5
 #undef C6
 #undef C7
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
 };
 
-static const FIXED_T SBC_ALIGNED analysis_consts_fixed8_simd_odd[80 + 64 + 16] = {
+static const FIXED_T SBC_ALIGNED analysis_consts_fixed8_simd_odd[80 + 16 + 64] = {
 #define C0 2.5377944043
 #define C1 2.4270044280
 #define C2 2.8015616024
@@ -674,6 +674,22 @@ static const FIXED_T SBC_ALIGNED analysis_consts_fixed8_simd_odd[80 + 64 + 16] =
 	 F(1.47640169E-03 * C6), -F(3.43256425E-04 * C6),
 	 F(1.13992507E-03 * C7), -F(5.54620202E-04 * C7),
 #undef F
+	 0xFFFF,
+	 0xFFFF-1,
+	 0xFFFF-2,
+	 0xFFFF-3,
+	 0xFFFF-4,
+	 0xFFFF-5,
+	 0xFFFF-6,
+	 0xFFFF-7,
+	 0xFFFF-8,
+	 0xFFFF-9,
+	 0xFFFF-10,
+	 0xFFFF-11,
+	 0xFFFF-12,
+	 0xFFFF-13,
+	 0xFFFF-14,
+	 0xFFFF-15,
 #define F(x) F_COS8(x)
 	-F(1.0000000000 / C0),  F(0.8314696123 / C1),
 	-F(1.0000000000 / C0), -F(0.1950903220 / C1),
@@ -717,22 +733,6 @@ static const FIXED_T SBC_ALIGNED analysis_consts_fixed8_simd_odd[80 + 64 + 16] =
 #undef C5
 #undef C6
 #undef C7
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
-	 0xFFFF,
 };
 
 static const FIXED_T SBC_ALIGNED analysis_consts_fixed8_simd_even_0[80 + 16 + 64] = {

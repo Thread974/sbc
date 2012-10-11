@@ -131,7 +131,7 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 		1 << (SBC_PROTO_FIXED8_SCALE - 1),
 		1 << (SBC_PROTO_FIXED8_SCALE - 1),
 	};
-	int halfblock = (in[0] == 0 && in[2] == 0 && in[3] == 0 &&
+	int halfblock = (in[0] == 0 && in[1] != 0 && in[2] == 0 && in[3] == 0 &&
 			in[4] == 0 && in[5] == 0 && in[6] == 0 && in[7] == 0 &&
 			in[8] == 0);
 	int i;
@@ -140,7 +140,7 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 		goto halfblock;
 	fprintf(stderr, "X  %s\n", halfblock ? "halfblock":"");
 	for (i = 0; i < 96; i+=16) {
-		fprintf(stderr, "  %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n",
+		fprintf(stderr, "x  %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n",
 			(int)in[i+0], (int)in[i+1],
 			(int)in[i+2], (int)in[i+3],
 			(int)in[i+4], (int)in[i+5],
@@ -149,7 +149,10 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 			(int)in[i+10], (int)in[i+11],
 			(int)in[i+12], (int)in[i+13],
 			(int)in[i+14], (int)in[i+15]);
-		fprintf(stderr, "  %6d %6d %6d %6d %6d %6d %6d %6d   %6d %6d %6d %6d %6d %6d %6d %6d\n",
+	}
+	/*
+	for (i = 0; i < 96; i+=16) {
+		fprintf(stderr, "c  %6d %6d %6d %6d %6d %6d %6d %6d   %6d %6d %6d %6d %6d %6d %6d %6d\n",
 			(int)consts[i+0], (int)consts[i+1],
 			(int)consts[i+2], (int)consts[i+3],
 			(int)consts[i+4], (int)consts[i+5],
@@ -159,6 +162,7 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 			(int)consts[i+12], (int)consts[i+13],
 			(int)consts[i+14], (int)consts[i+15]);
 	}
+	*/
 	fprintf(stderr, "\n");
 
 	__asm__ volatile (
@@ -239,6 +243,54 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 		"\n"
 		"movq       %%mm0, %%mm4\n"
 		"movq       %%mm0, %%mm5\n"
+		"pmaddwd  192(%1), %%mm4\n"
+		"pmaddwd  200(%1), %%mm5\n"
+		"\n"
+		"movq       %%mm1, %%mm6\n"
+		"movq       %%mm1, %%mm7\n"
+		"pmaddwd  224(%1), %%mm6\n"
+		"pmaddwd  232(%1), %%mm7\n"
+		"paddd      %%mm6, %%mm4\n"
+		"paddd      %%mm7, %%mm5\n"
+		"\n"
+		"movq       %%mm2, %%mm6\n"
+		"movq       %%mm2, %%mm7\n"
+		"pmaddwd  256(%1), %%mm6\n"
+		"pmaddwd  264(%1), %%mm7\n"
+		"paddd      %%mm6, %%mm4\n"
+		"paddd      %%mm7, %%mm5\n"
+		"\n"
+		"movq       %%mm3, %%mm6\n"
+		"movq       %%mm3, %%mm7\n"
+		"pmaddwd  272(%1), %%mm6\n"
+		"pmaddwd  296(%1), %%mm7\n"
+		"paddd      %%mm6, %%mm4\n"
+		"paddd      %%mm7, %%mm5\n"
+		"\n"
+		"movq       %%mm4, (%3)\n"
+		"movq       %%mm5, 8(%3)\n"
+		"\n"
+		"movq       %%mm0, %%mm5\n"
+		"pmaddwd  208(%1), %%mm0\n"
+		"pmaddwd  216(%1), %%mm5\n"
+		"\n"
+		"movq       %%mm1, %%mm7\n"
+		"pmaddwd  240(%1), %%mm1\n"
+		"pmaddwd  248(%1), %%mm7\n"
+		"paddd      %%mm1, %%mm0\n"
+		"paddd      %%mm7, %%mm5\n"
+		"\n"
+		"movq       %%mm2, %%mm7\n"
+		"pmaddwd  272(%1), %%mm2\n"
+		"pmaddwd  280(%1), %%mm7\n"
+		"paddd      %%mm2, %%mm0\n"
+		"paddd      %%mm7, %%mm5\n"
+		"\n"
+		"movq       %%mm3, %%mm7\n"
+		"pmaddwd  304(%1), %%mm3\n"
+		"pmaddwd  314(%1), %%mm7\n"
+/*		"movq       %%mm0, %%mm4\n"
+		"movq       %%mm0, %%mm5\n"
 		"pmaddwd  160(%1), %%mm4\n"
 		"pmaddwd  168(%1), %%mm5\n"
 		"\n"
@@ -284,7 +336,7 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 		"\n"
 		"movq       %%mm3, %%mm7\n"
 		"pmaddwd  272(%1), %%mm3\n"
-		"pmaddwd  280(%1), %%mm7\n"
+		"pmaddwd  280(%1), %%mm7\n"*/
 		"paddd      %%mm3, %%mm0\n"
 		"paddd      %%mm7, %%mm5\n"
 		"\n"
@@ -304,7 +356,7 @@ halfblock:
 
 	fprintf(stderr, "X0 %s\n", halfblock ? "halfblock":"");
 	for (i = 0; i < 96; i+=16) {
-		fprintf(stderr, "  %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n",
+		fprintf(stderr, "x  %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n",
 			(int)in[i+0], (int)in[i+1],
 			(int)in[i+2], (int)in[i+3],
 			(int)in[i+4], (int)in[i+5],
@@ -313,7 +365,10 @@ halfblock:
 			(int)in[i+10], (int)in[i+11],
 			(int)in[i+12], (int)in[i+13],
 			(int)in[i+14], (int)in[i+15]);
-		fprintf(stderr, "  %6d %6d %6d %6d %6d %6d %6d %6d   %6d %6d %6d %6d %6d %6d %6d %6d\n",
+	}
+	/*
+	for (i = 0; i < 96; i+=16) {
+		fprintf(stderr, "c  %6d %6d %6d %6d %6d %6d %6d %6d   %6d %6d %6d %6d %6d %6d %6d %6d\n",
 			(int)consts[i+0], (int)consts[i+1],
 			(int)consts[i+2], (int)consts[i+3],
 			(int)consts[i+4], (int)consts[i+5],
@@ -322,7 +377,7 @@ halfblock:
 			(int)consts[i+10], (int)consts[i+11],
 			(int)consts[i+12], (int)consts[i+13],
 			(int)consts[i+14], (int)consts[i+15]);
-	}
+	}*/
 	fprintf(stderr, "\n");
 
 	__asm__ volatile (
