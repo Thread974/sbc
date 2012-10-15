@@ -28,7 +28,7 @@
 #define __SBC_PRIMITIVES_H
 
 #define SCALE_OUT_BITS 15
-#define SBC_X_BUFFER_SIZE (256+72+32)
+#define SBC_X_BUFFER_SIZE (256+72+30)
 
 #ifdef __GNUC__
 #define SBC_ALWAYS_INLINE inline __attribute__((always_inline))

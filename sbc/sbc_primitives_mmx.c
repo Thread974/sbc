@@ -126,16 +126,16 @@ static inline void sbc_analyze_four_mmx(const int16_t *in, int32_t *out,
 
 static int odd = 1;
 
-static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
+static inline void sbc_analyze_eight_mmx(int16_t *in, int32_t *out,
 							const FIXED_T *consts)
 {
 	static const SBC_ALIGNED int32_t round_c[2] = {
 		1 << (SBC_PROTO_FIXED8_SCALE - 1),
 		1 << (SBC_PROTO_FIXED8_SCALE - 1),
 	};
-	int halfblock = (in[0] == 0 && in[1] != 0 && in[2] == 0 && in[3] == 0 &&
-			in[4] == 0 && in[5] == 0 && in[6] == 0 && in[7] == 0 &&
-			in[8] == 0);
+	int halfblock = (in[1] == 0 && in[2] != 0 && in[9] == 0 && in[13] == 0 &&
+			in[14] == 0 && in[15] == 0 && in[12] == 0 && in[11] == 0 &&
+			in[10] == 0);
 	//int i;
 
 	if (halfblock)
@@ -169,7 +169,7 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 			(int)consts[i+14], (int)consts[i+15]);
 	}
 	*/
-	fprintf(stderr, "\n");
+	//fprintf(stderr, "\n");
 
 	__asm__ volatile (
 		"movq        (%0), %%mm0\n"
@@ -368,6 +368,17 @@ halfblock:
 			(consts == analysis_consts_fixed8_simd_even_0) ? "analysis_consts_fixed8_simd_even_0" :
 			(consts == analysis_consts_fixed8_simd_odd_0) ? "analysis_consts_fixed8_simd_odd_0" : "*#!@",
 			halfblock ? "halfblock":"");
+	// Zero the additional bytes
+#define OFF(x) (80+x)
+	in[OFF(0)] = 0;
+	in[OFF(2)] = 0;
+	in[OFF(3)] = 0;
+	in[OFF(4)] = 0;
+	in[OFF(5)] = 0;
+	in[OFF(6)] = 0;
+	in[OFF(7)] = 0;
+	in[OFF(8)] = 0;
+	
 	/*
 	for (i = 0; i < 96; i+=16) {
 		fprintf(stderr, "x  %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n",
@@ -392,7 +403,7 @@ halfblock:
 			(int)consts[i+12], (int)consts[i+13],
 			(int)consts[i+14], (int)consts[i+15]);
 	}*/
-	fprintf(stderr, "\n");
+	//fprintf(stderr, "\n");
 
 	__asm__ volatile (
 		"movq        (%0), %%mm0\n"
