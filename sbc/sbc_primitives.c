@@ -508,7 +508,7 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 		int16_t *x = &X[0][0];
 		fprintf(stderr, "%s: after:  nsamples %d, position %d->%d\n", __FUNCTION__, ssamples, position, position+ssamples);
 		for (i = 0; i < SBC_X_BUFFER_SIZE; i += 8) {
-			fprintf(stderr, "%3d: %4hx %4hx %4hx %4hx %4hx %4hx %4hx %4hx  %s", i,
+			fprintf(stderr, "%3d: %4hd %4hd %4hd %4hd %4hd %4hd %4hd %4hd  %s", i,
 				(int16_t)x[i+0],  (int16_t)x[i+1],  (int16_t)x[i+2],  (int16_t)x[i+3],
 				(int16_t)x[i+4],  (int16_t)x[i+5],  (int16_t)x[i+6],  (int16_t)x[i+7], ((i % 16 == 8) || ((i+8) >= SBC_X_BUFFER_SIZE)) ? "\n" : " ");
 		}
