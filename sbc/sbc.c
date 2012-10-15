@@ -720,7 +720,7 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 	switch (frame->subbands) {
 	case 4:
 		for (ch = 0; ch < frame->channels; ch++) {
-			x = &state->X[ch][state->position - 4 * state->inc +
+			x = &state->X[ch][state->position - 16 +
 							frame->blocks * 4];
 			for (blk = 0; blk < frame->blocks; blk += state->inc) {
 				state->sbc_analyze_4b_4s(
@@ -734,22 +734,29 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 		return frame->blocks * 4;
 
 	case 8:
+		fprintf(stderr, "position: %d\n", state->position);
 		for (ch = 0; ch < frame->channels; ch++) {
-			x = &state->X[ch][state->position - 8 * state->inc +
+			x = &state->X[ch][state->position - 32 +
 							frame->blocks * 8];
-			//fprintf(stderr, "analyse: %d\n", state->position - 32 + frame->blocks * 8);
 			for (blk = 0; blk < frame->blocks; blk += state->inc) {
-				//fprintf(stderr, "analyse from position: %d\n", state->position - 32 + frame->blocks * 8 - blk * 8 * state->inc);
+				fprintf(stderr, "blk: %d, position: %d, should be: %d, analyse: %d, valid: %d\n", blk, state->position, state->position+(frame->blocks-1-blk)*8, ((int)x - (int)(&state->X[ch])) / 2, (int)x > (int)(&state->X[ch]));
+				x = &state->X[ch][state->position+(frame->blocks-1-blk)*8];
 				state->sbc_analyze_4b_8s(
 					x,
 					frame->sb_sample_f[blk][ch],
 					frame->sb_sample_f[blk + 1][ch] -
 					frame->sb_sample_f[blk][ch]);
-				x -= 8 * state->inc;
 			}
 		}
-		fprintf(stderr, "press return");
-		fgetc(stdin);
+		{
+			static int brk = 1;
+			char c = 0;
+			fprintf(stderr, "press return or press c");
+			if (brk)
+				c = fgetc(stdin);
+			if (c == 'c')
+				brk = 0;
+		}
 		return frame->blocks * 8;
 
 	default:

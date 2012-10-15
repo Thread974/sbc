@@ -124,6 +124,8 @@ static inline void sbc_analyze_four_mmx(const int16_t *in, int32_t *out,
 		: "cc", "memory");
 }
 
+static int odd = 1;
+
 static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 							const FIXED_T *consts)
 {
@@ -134,11 +136,15 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 	int halfblock = (in[0] == 0 && in[1] != 0 && in[2] == 0 && in[3] == 0 &&
 			in[4] == 0 && in[5] == 0 && in[6] == 0 && in[7] == 0 &&
 			in[8] == 0);
-	int i;
+	//int i;
 
 	if (halfblock)
 		goto halfblock;
-	fprintf(stderr, "X  %s\n", halfblock ? "halfblock":"");
+	fprintf(stderr, "X  %s %s\n",
+			(consts == analysis_consts_fixed8_simd_even) ? "analysis_consts_fixed8_simd_even" :
+			(consts == analysis_consts_fixed8_simd_odd) ? "analysis_consts_fixed8_simd_odd" : "*#!@",
+			halfblock ? "halfblock":"");
+	/*
 	for (i = 0; i < 96; i+=16) {
 		fprintf(stderr, "x  %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n",
 			(int)in[i+0], (int)in[i+1],
@@ -149,7 +155,7 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 			(int)in[i+10], (int)in[i+11],
 			(int)in[i+12], (int)in[i+13],
 			(int)in[i+14], (int)in[i+15]);
-	}
+	}*/
 	/*
 	for (i = 0; i < 96; i+=16) {
 		fprintf(stderr, "c  %6d %6d %6d %6d %6d %6d %6d %6d   %6d %6d %6d %6d %6d %6d %6d %6d\n",
@@ -346,6 +352,10 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 		: "r" (in), "r" (consts), "r" (&round_c), "r" (out),
 			"i" (SBC_PROTO_FIXED8_SCALE)
 		: "cc", "memory");
+	
+	// reverse odd state on full blocks only
+	odd = !odd;
+
 	return;
 halfblock:
 	/* Use zeroed tables */
@@ -354,7 +364,11 @@ halfblock:
 	if (consts == analysis_consts_fixed8_simd_odd)
 		consts = analysis_consts_fixed8_simd_odd_0;
 
-	fprintf(stderr, "X0 %s\n", halfblock ? "halfblock":"");
+	fprintf(stderr, "X0 %s %s\n",
+			(consts == analysis_consts_fixed8_simd_even_0) ? "analysis_consts_fixed8_simd_even_0" :
+			(consts == analysis_consts_fixed8_simd_odd_0) ? "analysis_consts_fixed8_simd_odd_0" : "*#!@",
+			halfblock ? "halfblock":"");
+	/*
 	for (i = 0; i < 96; i+=16) {
 		fprintf(stderr, "x  %6d %6d %6d %6d %6d %6d %6d %6d . %6d %6d %6d %6d %6d %6d %6d %6d\n",
 			(int)in[i+0], (int)in[i+1],
@@ -365,7 +379,7 @@ halfblock:
 			(int)in[i+10], (int)in[i+11],
 			(int)in[i+12], (int)in[i+13],
 			(int)in[i+14], (int)in[i+15]);
-	}
+	}*/
 	/*
 	for (i = 0; i < 96; i+=16) {
 		fprintf(stderr, "c  %6d %6d %6d %6d %6d %6d %6d %6d   %6d %6d %6d %6d %6d %6d %6d %6d\n",
@@ -526,6 +540,9 @@ halfblock:
 		: "r" (in), "r" (consts), "r" (&round_c), "r" (out),
 			"i" (SBC_PROTO_FIXED8_SCALE)
 		: "cc", "memory");
+
+	// reverse odd state on full blocks only
+	//odd = !odd;
 }
 
 static inline void sbc_analyze_4b_4s_mmx(int16_t *x, int32_t *out,
@@ -553,12 +570,9 @@ static inline void sbc_analyze_4b_8s_mmx(int16_t *x, int32_t *out,
 	//out += out_stride;
 	//sbc_analyze_eight_mmx(x + 8, out, analysis_consts_fixed8_simd_odd);
 	//out += out_stride;
-	static int odd = 1;
 	sbc_analyze_eight_mmx(x + 0, out, odd ?
 			analysis_consts_fixed8_simd_odd : analysis_consts_fixed8_simd_even
 			);
-	odd = !odd;
-
 	__asm__ volatile ("emms\n");
 }
 
