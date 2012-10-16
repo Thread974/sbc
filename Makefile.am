@@ -13,12 +13,7 @@ SBC_AGE = 0
 sbc_headers = sbc/sbc.h
 
 sbc_sources = sbc/sbc.c sbc/sbc_private.h sbc/sbc_math.h sbc/sbc_tables.h \
-		sbc/sbc_primitives.h sbc/sbc_primitives.c \
-		sbc/sbc_primitives_stdc.h sbc/sbc_primitives_stdc.c \
-		sbc/sbc_primitives_mmx.h sbc/sbc_primitives_mmx.c \
-		sbc/sbc_primitives_iwmmxt.h sbc/sbc_primitives_iwmmxt.c \
-		sbc/sbc_primitives_neon.h sbc/sbc_primitives_neon.c \
-		sbc/sbc_primitives_armv6.h sbc/sbc_primitives_armv6.c
+		sbc/sbc_primitives.h sbc/sbc_primitives.c
 
 pkginclude_HEADERS = $(sbc_headers)
 
