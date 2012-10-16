@@ -476,6 +476,23 @@ static const FIXED_T SBC_ALIGNED analysis_consts_fixed8_simd_even[80 + 64] = {
 #define C5 2.4270044280
 #define C6 2.8015616024
 #define C7 3.1710363741
+#undef C0
+#undef C1
+#undef C2
+#undef C3
+#undef C4
+#undef C5
+#undef C6
+#undef C7
+
+#define C0 2.0
+#define C1 2.0
+#define C2 2.0
+#define C3 2.0
+#define C4 2.0
+#define C5 2.0
+#define C6 2.0
+#define C7 2.0
 
 #define F(x) F_PROTO8(x)
 	 F(0.00000000E+00 * C0),  F(2.01182542E-03 * C0),
@@ -573,6 +590,23 @@ static const FIXED_T SBC_ALIGNED analysis_consts_fixed8_simd_odd[80 + 64] = {
 #define C5 2.4270044280
 #define C6 2.8015616024
 #define C7 3.1710363741
+#undef C0
+#undef C1
+#undef C2
+#undef C3
+#undef C4
+#undef C5
+#undef C6
+#undef C7
+
+#define C0 2.0
+#define C1 2.0
+#define C2 2.0
+#define C3 2.0
+#define C4 2.0
+#define C5 2.0
+#define C6 2.0
+#define C7 2.0
 
 #define F(x) F_PROTO8(x)
 	 F(0.00000000E+00 * C0), -F(8.23919506E-04 * C0),
