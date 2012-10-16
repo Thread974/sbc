@@ -736,11 +736,29 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 	case 8:
 		fprintf(stderr, "position: %d\n", state->position);
 		for (ch = 0; ch < frame->channels; ch++) {
-			x = &state->X[ch][state->position - 8 * state->inc +
-							frame->blocks * 8];
+			int halfblock = 0;
+			int blockstart;
+			x = &state->X[ch][state->position];
+			halfblock =
+				(x[0] == 0) &&
+				(x[2] == 0) &&
+				(x[3] == 0) &&
+				(x[4] == 0) &&
+				(x[5] == 0) &&
+				(x[6] == 0) &&
+				(x[7] == 0) &&
+				(x[8] == x[1]);
+			fprintf(stderr, "frame starts with halfblock: %d at position %d\n", halfblock, state->position);
+
+			blockstart = state->position - 8 * state->inc + frame->blocks * 8;
+			if (halfblock)
+				blockstart += 8;
+			x = &state->X[ch][blockstart];
+
 			for (blk = 0; blk < frame->blocks; blk += state->inc) {
 				//x = &state->X[ch][state->position+(frame->blocks-1-blk)*8];
 				fprintf(stderr, "blk: %d, position: %d, should be: %d, analyse: %d, valid: %d\n", blk, state->position, state->position+(frame->blocks-1-blk)*8, ((int)x - (int)(&state->X[ch])) / 2, (int)x > (int)(&state->X[ch]));
+
 				state->sbc_analyze_4b_8s(
 					x,
 					frame->sb_sample_f[blk][ch],

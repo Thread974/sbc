@@ -343,41 +343,22 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 		/* Stay at same position */
 		if (nchannels > 0) {
 			int16_t *x = &X[0][position];
-			//x[0] was previously set;
-			x[1] = PCM(0 + 7 * nchannels);
-			//x[2]
-			//x[3]
-			//x[4]
-			//x[5]
-			//x[6]
-			//x[7]
-			//x[8]
-			x[9] = PCM(0 + 3 * nchannels);
-			x[10] = PCM(0 + 6 * nchannels);
-			x[11] = PCM(0 + 0 * nchannels);
-			x[12] = PCM(0 + 5 * nchannels);
-			x[13] = PCM(0 + 1 * nchannels);
-			x[14] = PCM(0 + 4 * nchannels);
-			x[15] = PCM(0 + 2 * nchannels);
-		}
-		if (nchannels > 1) {
-			int16_t *x = &X[1][position];
-			//x[0] was previously set;
-			x[1] = PCM(0 + 3 * nchannels);
-			//x[2]
-			//x[3]
-			//x[4]
-			//x[5]
-			//x[6]
-			//x[7]
-			//x[8]
-			x[9] = PCM(1 + 3 * nchannels);
-			x[10] = PCM(1 + 6 * nchannels);
-			x[11] = PCM(1 + 0 * nchannels);
-			x[12] = PCM(1 + 5 * nchannels);
-			x[13] = PCM(1 + 1 * nchannels);
-			x[14] = PCM(1 + 4 * nchannels);
-			x[15] = PCM(1 + 2 * nchannels);
+			x[0]  = PCM(0 + (15-8) * nchannels);
+			x[1]  = 0;//PCM(0 + 7 * nchannels);
+			x[2]  = PCM(0 + (14-8) * nchannels);
+			x[3]  = PCM(0 + (8-8) * nchannels);
+			x[4]  = PCM(0 + (13-8) * nchannels);
+			x[5]  = PCM(0 + (9-8) * nchannels);
+			x[6]  = PCM(0 + (12-8) * nchannels);
+			x[7]  = PCM(0 + (10-8) * nchannels);
+			x[8]  = PCM(0 + (11-8) * nchannels); // overwrite
+			x[9]  = 0;//PCM(0 + 3 * nchannels);
+			x[10] = 0;//PCM(0 + 6 * nchannels);
+			x[11] = 0;//PCM(0 + 0 * nchannels);
+			x[12] = 0;//PCM(0 + 5 * nchannels);
+			x[13] = 0;//PCM(0 + 1 * nchannels);
+			x[14] = 0;//PCM(0 + 4 * nchannels);
+			x[15] = 0;//PCM(0 + 2 * nchannels);
 		}
 		pcm += 16 * nchannels;
 	}
@@ -431,68 +412,29 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 
 	if (nsamples == 8) {
 		fprintf(stderr, "remaining samples: %d\n", nsamples);
-		position -= 16; /* position moves by 16 since next halfblock wont move */
+		position -= 16; /* position moves by 16 but next halfblock wont move */
 		halfblock = 1;
 		fprintf(stderr, "starting halfblock from %d to %d\n", position, position+16);
 #define OFF(x) (80+x)
 		if (nchannels > 0) {
 			// input is [15 .. 0][15..8] most recent here
 			int16_t *x = &X[0][position];
-			x[0]  = PCM(0 + 7 * nchannels);
-			x[1]  = 0;
-			x[2]  = PCM(0 + 6 * nchannels);
-			x[3]  = PCM(0 + 0 * nchannels);
-			x[4]  = PCM(0 + 5 * nchannels);
-			x[5]  = PCM(0 + 1 * nchannels);
-			x[6]  = PCM(0 + 4 * nchannels);
-			x[7]  = PCM(0 + 2 * nchannels);
-			x[8]  = PCM(0 + 3 * nchannels);
-			x[9]  = 0;
-			x[10] = 0;
-			x[11] = 0;
-			x[12] = 0;
-			x[13] = 0;
-			x[14] = 0;
-			x[15] = 0;
-			/*
-			x[OFF(0)] = 0;
-			x[OFF(2)] = 0;
-			x[OFF(3)] = 0;
-			x[OFF(4)] = 0;
-			x[OFF(5)] = 0;
-			x[OFF(6)] = 0;
-			x[OFF(7)] = 0;
-			x[OFF(8)] = 0;
-			*/
-		}
-		if (nchannels > 1) {
-			int16_t *x = &X[1][position];
-			x[0]  = PCM(1 + 7 * nchannels);
-			x[1]  = 0;
-			x[2]  = PCM(1 + 6 * nchannels);
-			x[3]  = PCM(1 + 0 * nchannels);
-			x[4]  = PCM(1 + 5 * nchannels);
-			x[5]  = PCM(1 + 1 * nchannels);
-			x[6]  = PCM(1 + 4 * nchannels);
-			x[7]  = PCM(1 + 2 * nchannels);
-			x[8]  = PCM(1 + 3 * nchannels);
-			x[9]  = 0;
-			x[10] = 0;
-			x[11] = 0;
-			x[12] = 0;
-			x[13] = 0;
-			x[14] = 0;
-			x[15] = 0;
-			/*
-			x[OFF(0)] = 0;
-			x[OFF(2)] = 0;
-			x[OFF(3)] = 0;
-			x[OFF(4)] = 0;
-			x[OFF(5)] = 0;
-			x[OFF(6)] = 0;
-			x[OFF(7)] = 0;
-			x[OFF(8)] = 0;
-			*/
+			x[0]  = 0;//PCM(0 + 15 * nchannels);
+			x[1]  = PCM(0 + 7 * nchannels);
+			x[2]  = 0;//PCM(0 + 14 * nchannels);
+			x[3]  = 0;//PCM(0 + 8 * nchannels);
+			x[4]  = 0;//PCM(0 + 13 * nchannels);
+			x[5]  = 0;//PCM(0 + 9 * nchannels);
+			x[6]  = 0;//PCM(0 + 12 * nchannels);
+			x[7]  = 0;//PCM(0 + 10 * nchannels);
+			x[8]  = x[1];//PCM(0 + 11 * nchannels);
+			x[9]  = PCM(0 + 3 * nchannels);
+			x[10] = PCM(0 + 6 * nchannels);
+			x[11] = PCM(0 + 0 * nchannels);
+			x[12] = PCM(0 + 5 * nchannels);
+			x[13] = PCM(0 + 1 * nchannels);
+			x[14] = PCM(0 + 4 * nchannels);
+			x[15] = PCM(0 + 2 * nchannels);
 		}
 #undef OFF
 		pcm += 16 * nchannels;
