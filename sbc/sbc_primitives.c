@@ -384,7 +384,7 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 
 
 	/* copy/permutate audio samples */
-	while ((nsamples -= 16) >= 0) {
+	while (nsamples >= 16) {
 		position -= 16;
 		fprintf(stderr, "reordering from %d to %d\n", position, position+16);
 		if (nchannels > 0) {
@@ -426,6 +426,7 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 			x[15] = PCM(1 + 2 * nchannels);
 		}
 		pcm += 32 * nchannels;
+		nsamples -= 16;
 	}
 
 	if (nsamples == 8) {
