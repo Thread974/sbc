@@ -736,9 +736,10 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 	case 8:
 		fprintf(stderr, "position: %d\n", state->position);
 		for (ch = 0; ch < frame->channels; ch++) {
-			x = &state->X[ch][state->position - 32 +
+			x = &state->X[ch][state->position - 8 * state->inc +
 							frame->blocks * 8];
 			for (blk = 0; blk < frame->blocks; blk += state->inc) {
+				//x = &state->X[ch][state->position+(frame->blocks-1-blk)*8];
 				fprintf(stderr, "blk: %d, position: %d, should be: %d, analyse: %d, valid: %d\n", blk, state->position, state->position+(frame->blocks-1-blk)*8, ((int)x - (int)(&state->X[ch])) / 2, (int)x > (int)(&state->X[ch]));
 				state->sbc_analyze_4b_8s(
 					x,

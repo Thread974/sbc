@@ -201,14 +201,16 @@ static inline void sbc_analyze_4b_4s_simd(int16_t *x,
 static inline void sbc_analyze_4b_8s_simd(int16_t *x,
 					  int32_t *out, int out_stride)
 {
-	/* Analyze blocks */
+	/* Analyze blocks *//*
 	sbc_analyze_eight_simd(x + 24, out, analysis_consts_fixed8_simd_odd);
 	out += out_stride;
 	sbc_analyze_eight_simd(x + 16, out, analysis_consts_fixed8_simd_even);
 	out += out_stride;
 	sbc_analyze_eight_simd(x + 8, out, analysis_consts_fixed8_simd_odd);
-	out += out_stride;
-	sbc_analyze_eight_simd(x + 0, out, analysis_consts_fixed8_simd_even);
+	out += out_stride;*/
+	static int odd = 1;
+	sbc_analyze_eight_simd(x + 0, out, odd ? analysis_consts_fixed8_simd_odd : analysis_consts_fixed8_simd_even);
+	odd = !odd;
 }
 
 static inline int16_t unaligned16_be(const uint8_t *ptr)
@@ -308,7 +310,7 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 				(int16_t)PCMA(i+4),  (int16_t)PCMA(i+5),  (int16_t)PCMA(i+6),  (int16_t)PCMA(i+7), ((i % 16 == 8) || ((i+8) >= ssamples)) ? "\n" : " ");
 		}
 	}
-
+/*
 	{
 		int16_t *x = &X[0][0];
 		fprintf(stderr, "%s: before:  nsamples %d, position %d->%d\n", __FUNCTION__, ssamples, position, position+ssamples);
@@ -318,7 +320,7 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 				(int16_t)x[i+4],  (int16_t)x[i+5],  (int16_t)x[i+6],  (int16_t)x[i+7], ((i % 16 == 8) || ((i+8) >= SBC_X_BUFFER_SIZE)) ? "\n" : " ");
 		}
 	}
-
+*/
 
 	/* handle X buffer wraparound */
 	if (position < nsamples) {
@@ -382,7 +384,7 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 
 
 	/* copy/permutate audio samples */
-	while (nsamples >= 16) {
+	while ((nsamples -= 16) >= 0) {
 		position -= 16;
 		fprintf(stderr, "reordering from %d to %d\n", position, position+16);
 		if (nchannels > 0) {
@@ -424,7 +426,6 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 			x[15] = PCM(1 + 2 * nchannels);
 		}
 		pcm += 32 * nchannels;
-		nsamples -= 16;
 	}
 
 	if (nsamples == 8) {

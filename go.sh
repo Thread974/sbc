@@ -1,8 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 
 make
-src/sbcenc -s4 -B4 sample-mono-16.au > sample-mono-16.au.sbc4
-src/sbcinfo sample-mono-16.au.sbc4
-src/sbcdec -f sample-mono-16.au.sbc4.au sample-mono-16.au.sbc4
-
-mplayer sample-mono-16.au.sbc4.au
+src/sbcenc  -b26 -B16 -s8   sample.au > sample.au.msbc
+src/sbcinfo sample.au.msbc
+src/sbcdec  -f sample.au.msbc.au sample.au.msbc
+mplayer sample.au.msbc.au
