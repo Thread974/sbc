@@ -747,7 +747,8 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 				(x[5] == 0) &&
 				(x[6] == 0) &&
 				(x[7] == 0) &&
-				(x[8] == x[1]);
+				(x[8] == x[1]) &&
+				(x[1] != 0);
 			fprintf(stderr, "frame starts with halfblock: %d at position %d\n", halfblock, state->position);
 
 			blockstart = state->position - 8 * state->inc + frame->blocks * 8;
@@ -756,14 +757,32 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 			x = &state->X[ch][blockstart];
 
 			for (blk = 0; blk < frame->blocks; blk += state->inc) {
+				int msbchalfblock = 0;
 				//x = &state->X[ch][state->position+(frame->blocks-1-blk)*8];
 				fprintf(stderr, "blk: %d, position: %d, should be: %d, analyse: %d, valid: %d\n", blk, state->position, state->position+(frame->blocks-1-blk)*8, ((int)x - (int)(&state->X[ch])) / 2, (int)x > (int)(&state->X[ch]));
+
+				// Zero last block before analyse
+				if (halfblock && blk == MSBC_BLOCKS-1 && frame->blocks == MSBC_BLOCKS) {
+					fprintf(stderr, "zeroing");
+					/*
+					x[80+1] = 0;
+					x[80+9] = 0;
+					x[80+10] = 0;
+					x[80+11] = 0;
+					x[80+12] = 0;
+					x[80+13] = 0;
+					x[80+14] = 0;
+					x[80+15] = 0;
+					*/msbchalfblock = 1;
+					//x -= 8 * state->inc;
+				}
 
 				state->sbc_analyze_4b_8s(
 					x,
 					frame->sb_sample_f[blk][ch],
-					frame->sb_sample_f[blk + 1][ch] -
-					frame->sb_sample_f[blk][ch]);
+					/*frame->sb_sample_f[blk + 1][ch] -
+					frame->sb_sample_f[blk][ch], */
+					msbchalfblock);
 				x -= 8 * state->inc;
 			}
 		}

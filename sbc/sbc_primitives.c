@@ -117,18 +117,29 @@ static inline void sbc_analyze_four_simd(const int16_t *in, int32_t *out,
 }
 
 static inline void sbc_analyze_eight_simd(const int16_t *in, int32_t *out,
-							const FIXED_T *consts)
+							const FIXED_T *consts, int msbchalfblock)
 {
 	FIXED_A t1[8];
 	FIXED_T t2[8];
-	int i, hop;
+	int i, hop, maxhop;
 
 	/* rounding coefficient */
 	t1[0] = t1[1] = t1[2] = t1[3] = t1[4] = t1[5] = t1[6] = t1[7] =
 		(FIXED_A) 1 << (SBC_PROTO_FIXED8_SCALE-1);
 
+	maxhop = msbchalfblock ? 96 : 80;
+	maxhop = 80;
+
+#define F_INV_PROTO8(x) (double) (((((double)x) - 0.5) / 2) / ((FIXED_A) 1 << (sizeof(FIXED_T) * CHAR_BIT - 1)))
+	for (hop = 0; hop < 16; hop += 16) {
+		int k;
+		for (k = 0; k < 16; k++) {
+			//fprintf(stderr, "%d: X: %d, C: %g\n", hop + k, in[hop + k], F_INV_PROTO8(consts[hop + k]));
+		}
+	}
+
 	/* low pass polyphase filter */
-	for (hop = 0; hop < 80; hop += 16) {
+	for (hop = 0; hop < maxhop; hop += 16) {
 		t1[0] += (FIXED_A) in[hop] * consts[hop];
 		t1[0] += (FIXED_A) in[hop + 1] * consts[hop + 1];
 		t1[1] += (FIXED_A) in[hop + 2] * consts[hop + 2];
@@ -209,7 +220,7 @@ static inline void sbc_analyze_4b_8s_simd(int16_t *x,
 	sbc_analyze_eight_simd(x + 8, out, analysis_consts_fixed8_simd_odd);
 	out += out_stride;*/
 	static int odd = 1;
-	sbc_analyze_eight_simd(x + 0, out, odd ? analysis_consts_fixed8_simd_odd : analysis_consts_fixed8_simd_even);
+	sbc_analyze_eight_simd(x + 0, out, odd ? analysis_consts_fixed8_simd_odd : analysis_consts_fixed8_simd_even, out_stride);
 	odd = !odd;
 }
 
@@ -325,12 +336,12 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 	/* handle X buffer wraparound */
 	if (position < nsamples) {
 		if (nchannels > 0)
-			memcpy(&X[0][SBC_X_BUFFER_SIZE - 72], &X[0][position],
-							72 * sizeof(int16_t));
+			memcpy(&X[0][SBC_X_BUFFER_SIZE - 72 - 16], &X[0][position],
+							(72 + 16) * sizeof(int16_t));
 		if (nchannels > 1)
-			memcpy(&X[1][SBC_X_BUFFER_SIZE - 72], &X[1][position],
-							72 * sizeof(int16_t));
-		position = SBC_X_BUFFER_SIZE - 72;
+			memcpy(&X[1][SBC_X_BUFFER_SIZE - 72 - 16], &X[1][position],
+							(72 + 16) * sizeof(int16_t));
+		position = SBC_X_BUFFER_SIZE - 72 - 16;
 	}
 
 	#define PCM(i) (big_endian ? \
@@ -344,7 +355,7 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 		if (nchannels > 0) {
 			int16_t *x = &X[0][position];
 			x[0]  = PCM(0 + (15-8) * nchannels);
-			x[1]  = 0;//PCM(0 + 7 * nchannels);
+			//x[1]  = PCM(0 + 7 * nchannels);
 			x[2]  = PCM(0 + (14-8) * nchannels);
 			x[3]  = PCM(0 + (8-8) * nchannels);
 			x[4]  = PCM(0 + (13-8) * nchannels);
@@ -352,13 +363,13 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 			x[6]  = PCM(0 + (12-8) * nchannels);
 			x[7]  = PCM(0 + (10-8) * nchannels);
 			x[8]  = PCM(0 + (11-8) * nchannels); // overwrite
-			x[9]  = 0;//PCM(0 + 3 * nchannels);
-			x[10] = 0;//PCM(0 + 6 * nchannels);
-			x[11] = 0;//PCM(0 + 0 * nchannels);
-			x[12] = 0;//PCM(0 + 5 * nchannels);
-			x[13] = 0;//PCM(0 + 1 * nchannels);
-			x[14] = 0;//PCM(0 + 4 * nchannels);
-			x[15] = 0;//PCM(0 + 2 * nchannels);
+			//x[9]  = PCM(0 + 3 * nchannels);
+			//x[10] = PCM(0 + 6 * nchannels);
+			//x[11] = PCM(0 + 0 * nchannels);
+			//x[12] = PCM(0 + 5 * nchannels);
+			//x[13] = PCM(0 + 1 * nchannels);
+			//x[14] = PCM(0 + 4 * nchannels);
+			//x[15] = PCM(0 + 2 * nchannels);
 		}
 		pcm += 16 * nchannels;
 	}
@@ -417,7 +428,7 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 		fprintf(stderr, "starting halfblock from %d to %d\n", position, position+16);
 #define OFF(x) (80+x)
 		if (nchannels > 0) {
-			// input is [15 .. 0][15..8] most recent here
+			// input is [15 .. 0][15..8] most recent to the right
 			int16_t *x = &X[0][position];
 			x[0]  = 0;//PCM(0 + 15 * nchannels);
 			x[1]  = PCM(0 + 7 * nchannels);
