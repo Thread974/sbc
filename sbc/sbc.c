@@ -736,53 +736,24 @@ static int sbc_analyze_audio(struct sbc_encoder_state *state,
 	case 8:
 		fprintf(stderr, "position: %d\n", state->position);
 		for (ch = 0; ch < frame->channels; ch++) {
-			int halfblock = 0;
 			int blockstart;
 			x = &state->X[ch][state->position];
-			halfblock =
-				(x[0] == 0) &&
-				(x[2] == 0) &&
-				(x[3] == 0) &&
-				(x[4] == 0) &&
-				(x[5] == 0) &&
-				(x[6] == 0) &&
-				(x[7] == 0) &&
-				(x[8] == x[1]) &&
-				(x[1] != 0);
-			fprintf(stderr, "frame starts with halfblock: %d at position %d\n", halfblock, state->position);
+			fprintf(stderr, "frame starts with pending %d at position %d\n", state->pending, state->position);
 
 			blockstart = state->position - 8 * state->inc + frame->blocks * 8;
-			if (halfblock)
+			if (state->pending == state->position)
 				blockstart += 8;
 			x = &state->X[ch][blockstart];
 
 			for (blk = 0; blk < frame->blocks; blk += state->inc) {
-				int msbchalfblock = 0;
 				//x = &state->X[ch][state->position+(frame->blocks-1-blk)*8];
 				fprintf(stderr, "blk: %d, position: %d, should be: %d, analyse: %d, valid: %d\n", blk, state->position, state->position+(frame->blocks-1-blk)*8, ((int)x - (int)(&state->X[ch])) / 2, (int)x > (int)(&state->X[ch]));
-
-				// Zero last block before analyse
-				if (halfblock && blk == MSBC_BLOCKS-1 && frame->blocks == MSBC_BLOCKS) {
-					fprintf(stderr, "zeroing");
-					/*
-					x[80+1] = 0;
-					x[80+9] = 0;
-					x[80+10] = 0;
-					x[80+11] = 0;
-					x[80+12] = 0;
-					x[80+13] = 0;
-					x[80+14] = 0;
-					x[80+15] = 0;
-					*/msbchalfblock = 1;
-					//x -= 8 * state->inc;
-				}
 
 				state->sbc_analyze_4b_8s(
 					x,
 					frame->sb_sample_f[blk][ch],
-					/*frame->sb_sample_f[blk + 1][ch] -
-					frame->sb_sample_f[blk][ch], */
-					msbchalfblock);
+					frame->sb_sample_f[blk + 1][ch] -
+					frame->sb_sample_f[blk][ch]);
 				x -= 8 * state->inc;
 			}
 		}
@@ -1121,7 +1092,7 @@ SBC_EXPORT ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
 	struct sbc_priv *priv;
 	int samples;
 	ssize_t framelen;
-	int (*sbc_enc_process_input)(int position,
+	int (*sbc_enc_process_input)(struct sbc_encoder_state *state,
 			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 			int nsamples, int nchannels);
 
@@ -1180,7 +1151,7 @@ SBC_EXPORT ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
 	}
 
 	priv->enc_state.position = sbc_enc_process_input(
-		priv->enc_state.position, (const uint8_t *) input,
+		&priv->enc_state, (const uint8_t *) input,
 		priv->enc_state.X, priv->frame.subbands * priv->frame.blocks,
 		priv->frame.channels);
 

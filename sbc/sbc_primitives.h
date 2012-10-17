@@ -39,6 +39,7 @@
 struct sbc_encoder_state {
 	int position;
 	int inc;
+	int pending;
 	int16_t SBC_ALIGNED X[2][SBC_X_BUFFER_SIZE];
 	/* Polyphase analysis filter for 4 subbands configuration,
 	 * it handles "inc" blocks at once */
@@ -48,16 +49,16 @@ struct sbc_encoder_state {
 	void (*sbc_analyze_4b_8s)(int16_t *x, int32_t *out, int out_stride);
 	/* Process input data (deinterleave, endian conversion, reordering),
 	 * depending on the number of subbands and input data byte order */
-	int (*sbc_enc_process_input_4s_le)(int position,
+	int (*sbc_enc_process_input_4s_le)(struct sbc_encoder_state *state,
 			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 			int nsamples, int nchannels);
-	int (*sbc_enc_process_input_4s_be)(int position,
+	int (*sbc_enc_process_input_4s_be)(struct sbc_encoder_state *state,
 			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 			int nsamples, int nchannels);
-	int (*sbc_enc_process_input_8s_le)(int position,
+	int (*sbc_enc_process_input_8s_le)(struct sbc_encoder_state *state,
 			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 			int nsamples, int nchannels);
-	int (*sbc_enc_process_input_8s_be)(int position,
+	int (*sbc_enc_process_input_8s_be)(struct sbc_encoder_state *state,
 			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 			int nsamples, int nchannels);
 	/* Scale factors calculation */
