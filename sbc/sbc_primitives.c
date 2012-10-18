@@ -209,6 +209,17 @@ static inline void sbc_analyze_4b_8s_simd(struct sbc_encoder_state *state,
 	sbc_analyze_eight_simd(x + 0, out, analysis_consts_fixed8_simd_even);
 }
 
+static inline void sbc_analyze_1b_8s_simd(struct sbc_encoder_state *state,
+		int16_t *x, int32_t *out, int out_stride)
+{
+	if (state->odd)
+		sbc_analyze_eight_simd(x, out, analysis_consts_fixed8_simd_odd);
+	else
+		sbc_analyze_eight_simd(x, out, analysis_consts_fixed8_simd_even);
+
+	state->odd = !state->odd;
+}
+
 static inline int16_t unaligned16_be(const uint8_t *ptr)
 {
 	return (int16_t) ((ptr[0] << 8) | ptr[1]);
@@ -298,8 +309,25 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 	#define PCM(i) (big_endian ? \
 		unaligned16_be(pcm + (i) * 2) : unaligned16_le(pcm + (i) * 2))
 
+	if (state->pending >= 0) {
+		state->pending = -1;
+		nsamples -= 8;
+		if (nchannels > 0) {
+			int16_t *x = &X[0][position];
+			x[0]  = PCM(0 + (15-8) * nchannels);
+			x[2]  = PCM(0 + (14-8) * nchannels);
+			x[3]  = PCM(0 + (8-8) * nchannels);
+			x[4]  = PCM(0 + (13-8) * nchannels);
+			x[5]  = PCM(0 + (9-8) * nchannels);
+			x[6]  = PCM(0 + (12-8) * nchannels);
+			x[7]  = PCM(0 + (10-8) * nchannels);
+			x[8]  = PCM(0 + (11-8) * nchannels);
+		}
+		pcm += 16 * nchannels;
+	}
+
 	/* copy/permutate audio samples */
-	while ((nsamples -= 16) >= 0) {
+	while (nsamples >= 16) {
 		position -= 16;
 		if (nchannels > 0) {
 			int16_t *x = &X[0][position];
@@ -340,6 +368,33 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 			x[15] = PCM(1 + 2 * nchannels);
 		}
 		pcm += 32 * nchannels;
+		nsamples -= 16;
+	}
+
+	if (nsamples == 8) {
+		position -= 16;
+		state->pending = position;
+
+		if (nchannels > 0) {
+			int16_t *x = &X[0][position];
+			x[0]  = 0;
+			x[1]  = PCM(0 + 7 * nchannels);
+			x[2]  = 0;
+			x[3]  = 0;
+			x[4]  = 0;
+			x[5]  = 0;
+			x[6]  = 0;
+			x[7]  = 0;
+			x[8]  = 0;
+			x[9]  = PCM(0 + 3 * nchannels);
+			x[10] = PCM(0 + 6 * nchannels);
+			x[11] = PCM(0 + 0 * nchannels);
+			x[12] = PCM(0 + 5 * nchannels);
+			x[13] = PCM(0 + 1 * nchannels);
+			x[14] = PCM(0 + 4 * nchannels);
+			x[15] = PCM(0 + 2 * nchannels);
+		}
+		pcm += 16 * nchannels;
 	}
 	#undef PCM
 
@@ -523,9 +578,15 @@ static int sbc_calc_scalefactors_j(
  */
 void sbc_init_primitives(struct sbc_encoder_state *state)
 {
+	state->pending = -1;
+	state->odd = 1;
+
 	/* Default implementation for analyze functions */
 	state->sbc_analyze_4b_4s = sbc_analyze_4b_4s_simd;
 	state->sbc_analyze_4b_8s = sbc_analyze_4b_8s_simd;
+
+	if (state->increment == 1)
+		state->sbc_analyze_4b_8s = sbc_analyze_1b_8s_simd;
 
 	/* Default implementation for input reordering / deinterleaving */
 	state->sbc_enc_process_input_4s_le = sbc_enc_process_input_4s_le;
