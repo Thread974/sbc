@@ -1034,7 +1034,7 @@ SBC_EXPORT ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
 	struct sbc_priv *priv;
 	int samples;
 	ssize_t framelen;
-	int (*sbc_enc_process_input)(int position,
+	int (*sbc_enc_process_input)(struct sbc_encoder_state *state,
 			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 			int nsamples, int nchannels);
 
@@ -1092,7 +1092,7 @@ SBC_EXPORT ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
 	}
 
 	priv->enc_state.position = sbc_enc_process_input(
-		priv->enc_state.position, (const uint8_t *) input,
+		&priv->enc_state, (const uint8_t *) input,
 		priv->enc_state.X, priv->frame.subbands * priv->frame.blocks,
 		priv->frame.channels);
 

@@ -227,10 +227,11 @@ static inline int16_t unaligned16_le(const uint8_t *ptr)
  */
 
 static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s4_internal(
-	int position,
+	struct sbc_encoder_state *state,
 	const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 	int nsamples, int nchannels, int big_endian)
 {
+	int position = state->position;
 	/* handle X buffer wraparound */
 	if (position < nsamples) {
 		if (nchannels > 0)
@@ -278,10 +279,11 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s4_internal(
 }
 
 static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
-	int position,
+	struct sbc_encoder_state *state,
 	const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 	int nsamples, int nchannels, int big_endian)
 {
+	int position = state->position;
 	/* handle X buffer wraparound */
 	if (position < nsamples) {
 		if (nchannels > 0)
@@ -356,52 +358,52 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
  * to the top of the buffer on buffer wraparound.
  */
 
-static int sbc_enc_process_input_4s_le(int position,
+static int sbc_enc_process_input_4s_le(struct sbc_encoder_state *state,
 		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 		int nsamples, int nchannels)
 {
 	if (nchannels > 1)
 		return sbc_encoder_process_input_s4_internal(
-			position, pcm, X, nsamples, 2, 0);
+			state, pcm, X, nsamples, 2, 0);
 	else
 		return sbc_encoder_process_input_s4_internal(
-			position, pcm, X, nsamples, 1, 0);
+			state, pcm, X, nsamples, 1, 0);
 }
 
-static int sbc_enc_process_input_4s_be(int position,
+static int sbc_enc_process_input_4s_be(struct sbc_encoder_state *state,
 		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 		int nsamples, int nchannels)
 {
 	if (nchannels > 1)
 		return sbc_encoder_process_input_s4_internal(
-			position, pcm, X, nsamples, 2, 1);
+			state, pcm, X, nsamples, 2, 1);
 	else
 		return sbc_encoder_process_input_s4_internal(
-			position, pcm, X, nsamples, 1, 1);
+			state, pcm, X, nsamples, 1, 1);
 }
 
-static int sbc_enc_process_input_8s_le(int position,
+static int sbc_enc_process_input_8s_le(struct sbc_encoder_state *state,
 		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 		int nsamples, int nchannels)
 {
 	if (nchannels > 1)
 		return sbc_encoder_process_input_s8_internal(
-			position, pcm, X, nsamples, 2, 0);
+			state, pcm, X, nsamples, 2, 0);
 	else
 		return sbc_encoder_process_input_s8_internal(
-			position, pcm, X, nsamples, 1, 0);
+			state, pcm, X, nsamples, 1, 0);
 }
 
-static int sbc_enc_process_input_8s_be(int position,
+static int sbc_enc_process_input_8s_be(struct sbc_encoder_state *state,
 		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
 		int nsamples, int nchannels)
 {
 	if (nchannels > 1)
 		return sbc_encoder_process_input_s8_internal(
-			position, pcm, X, nsamples, 2, 1);
+			state, pcm, X, nsamples, 2, 1);
 	else
 		return sbc_encoder_process_input_s8_internal(
-			position, pcm, X, nsamples, 1, 1);
+			state, pcm, X, nsamples, 1, 1);
 }
 
 /* Supplementary function to count the number of leading zeros */

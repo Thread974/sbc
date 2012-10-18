@@ -845,36 +845,36 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 #undef PERM_BE
 #undef PERM_LE
 
-static int sbc_enc_process_input_4s_be_neon(int position, const uint8_t *pcm,
-					int16_t X[2][SBC_X_BUFFER_SIZE],
-					int nsamples, int nchannels)
+static int sbc_enc_process_input_4s_be_neon(struct sbc_encoder_state *state,
+		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+		int nsamples, int nchannels)
 {
 	return sbc_enc_process_input_4s_neon_internal(
-		position, pcm, X, nsamples, nchannels, 1);
+		state->position, pcm, X, nsamples, nchannels, 1);
 }
 
-static int sbc_enc_process_input_4s_le_neon(int position, const uint8_t *pcm,
-					int16_t X[2][SBC_X_BUFFER_SIZE],
-					int nsamples, int nchannels)
+static int sbc_enc_process_input_4s_le_neon(struct sbc_encoder_state *state,
+		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+		int nsamples, int nchannels)
 {
 	return sbc_enc_process_input_4s_neon_internal(
-		position, pcm, X, nsamples, nchannels, 0);
+		state->position, pcm, X, nsamples, nchannels, 0);
 }
 
-static int sbc_enc_process_input_8s_be_neon(int position, const uint8_t *pcm,
-					int16_t X[2][SBC_X_BUFFER_SIZE],
-					int nsamples, int nchannels)
+static int sbc_enc_process_input_8s_be_neon(struct sbc_encoder_state *state,
+		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+		int nsamples, int nchannels)
 {
 	return sbc_enc_process_input_8s_neon_internal(
-		position, pcm, X, nsamples, nchannels, 1);
+		state->position, pcm, X, nsamples, nchannels, 1);
 }
 
-static int sbc_enc_process_input_8s_le_neon(int position, const uint8_t *pcm,
-					int16_t X[2][SBC_X_BUFFER_SIZE],
-					int nsamples, int nchannels)
+static int sbc_enc_process_input_8s_le_neon(struct sbc_encoder_state *state,
+		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
+		int nsamples, int nchannels)
 {
 	return sbc_enc_process_input_8s_neon_internal(
-		position, pcm, X, nsamples, nchannels, 0);
+		state->position, pcm, X, nsamples, nchannels, 0);
 }
 
 void sbc_init_primitives_neon(struct sbc_encoder_state *state)
