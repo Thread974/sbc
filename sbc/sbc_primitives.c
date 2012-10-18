@@ -6,6 +6,7 @@
  *  Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
  *  Copyright (C) 2004-2005  Henryk Ploetz <henryk@ploetzli.ch>
  *  Copyright (C) 2005-2006  Brad Midgley <bmidgley@xmission.com>
+ *  Copyright (C) 2012       Intel Corporation
  *
  *
  *  This library is free software; you can redistribute it and/or
@@ -196,12 +197,37 @@ static inline void sbc_analyze_4b_4s_simd(struct sbc_encoder_state *state,
 	sbc_analyze_four_simd(x + 0, out, analysis_consts_fixed4_simd_even);
 }
 
+static inline void sbc_analyze_1b_4s_simd(struct sbc_encoder_state *state,
+		int16_t *x, int32_t *out, int out_stride)
+{
+	if (state->odd)
+		sbc_analyze_four_simd(x, out, analysis_consts_fixed4_simd_odd);
+	else
+		sbc_analyze_four_simd(x, out, analysis_consts_fixed4_simd_even);
+
+	state->odd = !state->odd;
+}
+
 static inline void sbc_analyze_4b_8s_simd(struct sbc_encoder_state *state,
 		int16_t *x, int32_t *out, int out_stride)
 {
-	sbc_analyze_eight_simd(x + 0, out,
-			state->odd ? analysis_consts_fixed8_simd_odd :
-					analysis_consts_fixed8_simd_even);
+	sbc_analyze_eight_simd(x + 24, out, analysis_consts_fixed8_simd_odd);
+	out += out_stride;
+	sbc_analyze_eight_simd(x + 16, out, analysis_consts_fixed8_simd_even);
+	out += out_stride;
+	sbc_analyze_eight_simd(x + 8, out, analysis_consts_fixed8_simd_odd);
+	out += out_stride;
+	sbc_analyze_eight_simd(x + 0, out, analysis_consts_fixed8_simd_even);
+}
+
+static inline void sbc_analyze_1b_8s_simd(struct sbc_encoder_state *state,
+		int16_t *x, int32_t *out, int out_stride)
+{
+	if (state->odd)
+		sbc_analyze_eight_simd(x, out, analysis_consts_fixed8_simd_odd);
+	else
+		sbc_analyze_eight_simd(x, out, analysis_consts_fixed8_simd_even);
+
 	state->odd = !state->odd;
 }
 
@@ -361,7 +387,6 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 		state->pending = position;
 
 		if (nchannels > 0) {
-
 			int16_t *x = &X[0][position];
 			x[0]  = 0;
 			x[1]  = PCM(0 + 7 * nchannels);
@@ -562,15 +587,26 @@ static int sbc_calc_scalefactors_j(
 /*
  * Detect CPU features and setup function pointers
  */
-void sbc_init_primitives(struct sbc_encoder_state *state)
+void sbc_init_primitives(int msbc, struct sbc_encoder_state *state)
 {
-	state->inc = 1;
+	state->inc = 4;
 	state->pending = -1;
 	state->odd = 1;
 
 	/* Default implementation for analyze functions */
-	state->sbc_analyze_4b_4s = sbc_analyze_4b_4s_simd;
-	state->sbc_analyze_4b_8s = sbc_analyze_4b_8s_simd;
+	if (msbc)
+		state->inc = 1;
+
+	switch(state->inc) {
+	case 1:
+		state->sbc_analyze_4b_4s = sbc_analyze_4b_4s_simd;
+		state->sbc_analyze_4b_8s = sbc_analyze_4b_8s_simd;
+		break;
+	case 4:
+		state->sbc_analyze_4b_4s = sbc_analyze_1b_4s_simd;
+		state->sbc_analyze_4b_8s = sbc_analyze_1b_8s_simd;
+		break;
+	}
 
 	/* Default implementation for input reordering / deinterleaving */
 	state->sbc_enc_process_input_4s_le = sbc_enc_process_input_4s_le;

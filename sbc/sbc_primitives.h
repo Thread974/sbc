@@ -80,6 +80,6 @@ struct sbc_encoder_state {
  * of SBC codec. Best implementation is selected based on target CPU
  * capabilities.
  */
-void sbc_init_primitives(struct sbc_encoder_state *encoder_state);
+void sbc_init_primitives(int msbc, struct sbc_encoder_state *encoder_state);
 
 #endif
