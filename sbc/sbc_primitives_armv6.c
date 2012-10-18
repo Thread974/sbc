@@ -278,6 +278,17 @@ static void sbc_analyze_4b_4s_armv6(struct sbc_encoder_state *state,
 	sbc_analyze_four(x + 0, out, analysis_consts_fixed4_simd_even);
 }
 
+static inline void sbc_analyze_1b_4s_armv6(struct sbc_encoder_state *state,
+		int16_t *x, int32_t *out, int out_stride)
+{
+	if (state->odd)
+		sbc_analyze_four_armv6(x, out, analysis_consts_fixed4_simd_odd);
+	else
+		sbc_analyze_four_armv6(x, out, analysis_consts_fixed4_simd_even);
+
+	state->odd = !state->odd;
+}
+
 static void sbc_analyze_4b_8s_armv6(struct sbc_encoder_state *state,
 		int16_t *x, int32_t *out, int out_stride)
 {
@@ -291,10 +302,29 @@ static void sbc_analyze_4b_8s_armv6(struct sbc_encoder_state *state,
 	sbc_analyze_eight(x + 0, out, analysis_consts_fixed8_simd_even);
 }
 
+static inline void sbc_analyze_1b_8s_armv6(struct sbc_encoder_state *state,
+		int16_t *x, int32_t *out, int out_stride)
+{
+	if (state->odd)
+		sbc_analyze_eight_mmx(x, out, analysis_consts_fixed8_simd_odd);
+	else
+		sbc_analyze_eight_mmx(x, out, analysis_consts_fixed8_simd_even);
+
+	state->odd = !state->odd;
+}
+
 void sbc_init_primitives_armv6(struct sbc_encoder_state *state)
 {
-	state->sbc_analyze_4b_4s = sbc_analyze_4b_4s_armv6;
-	state->sbc_analyze_4b_8s = sbc_analyze_4b_8s_armv6;
+	switch(state->inc) {
+	case 4:
+		state->sbc_analyze_4b_4s = sbc_analyze_4b_4s_armv6;
+		state->sbc_analyze_4b_8s = sbc_analyze_4b_8s_armv6;
+		break;
+	case 1:
+		state->sbc_analyze_4b_4s = sbc_analyze_1b_4s_armv6;
+		state->sbc_analyze_4b_8s = sbc_analyze_1b_8s_armv6;
+		break;
+	}
 	state->implementation_info = "ARMv6 SIMD";
 }
 
