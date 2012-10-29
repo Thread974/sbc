@@ -544,10 +544,9 @@ int sbc_calc_scalefactors_j_neon(
 		(d * 2) + 0, (d * 2) + 1  \
 	}
 
-static SBC_ALWAYS_INLINE int sbc_enc_process_input_4s_neon_internal(
-	int position,
-	const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
-	int nsamples, int nchannels, int big_endian)
+static SBC_ALWAYS_INLINE void sbc_enc_process_input_4s_neon_internal(
+	struct sbc_encoder_state *state, const uint8_t *pcm, int nsamples,
+	int nchannels, int big_endian)
 {
 	static SBC_ALIGNED uint8_t perm_be[2][8] = {
 		PERM_BE(7, 3, 6, 4),
@@ -558,9 +557,9 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_4s_neon_internal(
 		PERM_LE(0, 2, 1, 5)
 	};
 	/* handle X buffer wraparound */
-	if (position < nsamples) {
-		int16_t *dst = &X[0][SBC_X_BUFFER_SIZE - 40];
-		int16_t *src = &X[0][position];
+	if (state->position < nsamples) {
+		int16_t *dst = &state->X[0][SBC_X_BUFFER_SIZE - 40];
+		int16_t *src = &state->X[0][state->position];
 		__asm__ volatile (
 			"vld1.16 {d0, d1, d2, d3}, [%[src], :128]!\n"
 			"vst1.16 {d0, d1, d2, d3}, [%[dst], :128]!\n"
@@ -573,8 +572,8 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_4s_neon_internal(
 			  [src] "+r" (src)
 			: : "memory", "d0", "d1", "d2", "d3");
 		if (nchannels > 1) {
-			dst = &X[1][SBC_X_BUFFER_SIZE - 40];
-			src = &X[1][position];
+			dst = &state->X[1][SBC_X_BUFFER_SIZE - 40];
+			src = &state->X[1][state->position];
 			__asm__ volatile (
 				"vld1.16 {d0, d1, d2, d3}, [%[src], :128]!\n"
 				"vst1.16 {d0, d1, d2, d3}, [%[dst], :128]!\n"
@@ -587,13 +586,13 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_4s_neon_internal(
 				  [src] "+r" (src)
 				: : "memory", "d0", "d1", "d2", "d3");
 		}
-		position = SBC_X_BUFFER_SIZE - 40;
+		state->position = SBC_X_BUFFER_SIZE - 40;
 	}
 
 	if ((nchannels > 1) && ((uintptr_t)pcm & 1)) {
 		/* poor 'pcm' alignment */
-		int16_t *x = &X[0][position];
-		int16_t *y = &X[1][position];
+		int16_t *x = &state->X[0][state->position];
+		int16_t *y = &state->X[1][state->position];
 		__asm__ volatile (
 			"vld1.8  {d0, d1}, [%[perm], :128]\n"
 		"1:\n"
@@ -618,7 +617,7 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_4s_neon_internal(
 			  [y]        "+r" (y),
 			  [pcm]      "+r" (pcm),
 			  [nsamples] "+r" (nsamples),
-			  [position] "+r" (position)
+			  [position] "+r" (state->position)
 			:
 			  [perm]      "r" (big_endian ? perm_be : perm_le)
 			: "cc", "memory", "d0", "d1", "d2", "d3", "d4",
@@ -626,8 +625,8 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_4s_neon_internal(
 			  "d20", "d21", "d22", "d23");
 	} else if (nchannels > 1) {
 		/* proper 'pcm' alignment */
-		int16_t *x = &X[0][position];
-		int16_t *y = &X[1][position];
+		int16_t *x = &state->X[0][state->position];
+		int16_t *y = &state->X[1][state->position];
 		__asm__ volatile (
 			"vld1.8  {d0, d1}, [%[perm], :128]\n"
 		"1:\n"
@@ -650,14 +649,14 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_4s_neon_internal(
 			  [y]        "+r" (y),
 			  [pcm]      "+r" (pcm),
 			  [nsamples] "+r" (nsamples),
-			  [position] "+r" (position)
+			  [position] "+r" (state->position)
 			:
 			  [perm]      "r" (big_endian ? perm_be : perm_le)
 			: "cc", "memory", "d0", "d1", "d2", "d3", "d4",
 			  "d5", "d6", "d7", "d16", "d17", "d18", "d19",
 			  "d20", "d21", "d22", "d23");
 	} else {
-		int16_t *x = &X[0][position];
+		int16_t *x = &state->X[0][state->position];
 		__asm__ volatile (
 			"vld1.8  {d0, d1}, [%[perm], :128]\n"
 		"1:\n"
@@ -673,19 +672,17 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_4s_neon_internal(
 			  [x]        "+r" (x),
 			  [pcm]      "+r" (pcm),
 			  [nsamples] "+r" (nsamples),
-			  [position] "+r" (position)
+			  [position] "+r" (state->position)
 			:
 			  [perm]      "r" (big_endian ? perm_be : perm_le)
 			: "cc", "memory", "d0", "d1", "d2", "d3", "d4",
 			  "d5", "d6", "d7", "d16", "d17", "d18", "d19");
 	}
-	return position;
 }
 
-static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
-	int position,
-	const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
-	int nsamples, int nchannels, int big_endian)
+static SBC_ALWAYS_INLINE void sbc_enc_process_input_8s_neon_internal(
+	struct sbc_encoder_state *state, const uint8_t *pcm, int nsamples,
+	int nchannels, int big_endian)
 {
 	static SBC_ALIGNED uint8_t perm_be[4][8] = {
 		PERM_BE(15, 7, 14, 8),
@@ -700,9 +697,9 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 		PERM_LE(5,  1, 4,  2)
 	};
 	/* handle X buffer wraparound */
-	if (position < nsamples) {
-		int16_t *dst = &X[0][SBC_X_BUFFER_SIZE - 72];
-		int16_t *src = &X[0][position];
+	if (state->position < nsamples) {
+		int16_t *dst = &state->X[0][SBC_X_BUFFER_SIZE - 72];
+		int16_t *src = &state->X[0][state->position];
 		__asm__ volatile (
 			"vld1.16 {d0, d1, d2, d3}, [%[src], :128]!\n"
 			"vst1.16 {d0, d1, d2, d3}, [%[dst], :128]!\n"
@@ -719,8 +716,8 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 			  [src] "+r" (src)
 			: : "memory", "d0", "d1", "d2", "d3");
 		if (nchannels > 1) {
-			dst = &X[1][SBC_X_BUFFER_SIZE - 72];
-			src = &X[1][position];
+			dst = &state->X[1][SBC_X_BUFFER_SIZE - 72];
+			src = &state->X[1][state->position];
 			__asm__ volatile (
 				"vld1.16 {d0, d1, d2, d3}, [%[src], :128]!\n"
 				"vst1.16 {d0, d1, d2, d3}, [%[dst], :128]!\n"
@@ -737,13 +734,13 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 				  [src] "+r" (src)
 				: : "memory", "d0", "d1", "d2", "d3");
 		}
-		position = SBC_X_BUFFER_SIZE - 72;
+		state->position = SBC_X_BUFFER_SIZE - 72;
 	}
 
 	if ((nchannels > 1) && ((uintptr_t)pcm & 1)) {
 		/* poor 'pcm' alignment */
-		int16_t *x = &X[0][position];
-		int16_t *y = &X[1][position];
+		int16_t *x = &state->X[0][state->position];
+		int16_t *y = &state->X[1][state->position];
 		__asm__ volatile (
 			"vld1.8  {d0, d1, d2, d3}, [%[perm], :128]\n"
 		"1:\n"
@@ -772,7 +769,7 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 			  [y]        "+r" (y),
 			  [pcm]      "+r" (pcm),
 			  [nsamples] "+r" (nsamples),
-			  [position] "+r" (position)
+			  [position] "+r" (state->position)
 			:
 			  [perm]      "r" (big_endian ? perm_be : perm_le)
 			: "cc", "memory", "d0", "d1", "d2", "d3", "d4",
@@ -780,8 +777,8 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 			  "d20", "d21", "d22", "d23");
 	} else if (nchannels > 1) {
 		/* proper 'pcm' alignment */
-		int16_t *x = &X[0][position];
-		int16_t *y = &X[1][position];
+		int16_t *x = &state->X[0][state->position];
+		int16_t *y = &state->X[1][state->position];
 		__asm__ volatile (
 			"vld1.8  {d0, d1, d2, d3}, [%[perm], :128]\n"
 		"1:\n"
@@ -808,14 +805,14 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 			  [y]        "+r" (y),
 			  [pcm]      "+r" (pcm),
 			  [nsamples] "+r" (nsamples),
-			  [position] "+r" (position)
+			  [position] "+r" (state->position)
 			:
 			  [perm]      "r" (big_endian ? perm_be : perm_le)
 			: "cc", "memory", "d0", "d1", "d2", "d3", "d4",
 			  "d5", "d6", "d7", "d16", "d17", "d18", "d19",
 			  "d20", "d21", "d22", "d23");
 	} else {
-		int16_t *x = &X[0][position];
+		int16_t *x = &state->X[0][state->position];
 		__asm__ volatile (
 			"vld1.8  {d0, d1, d2, d3}, [%[perm], :128]\n"
 		"1:\n"
@@ -833,48 +830,39 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 			  [x]        "+r" (x),
 			  [pcm]      "+r" (pcm),
 			  [nsamples] "+r" (nsamples),
-			  [position] "+r" (position)
+			  [position] "+r" (state->position)
 			:
 			  [perm]      "r" (big_endian ? perm_be : perm_le)
 			: "cc", "memory", "d0", "d1", "d2", "d3", "d4",
 			  "d5", "d6", "d7", "d16", "d17", "d18", "d19");
 	}
-	return position;
 }
 
 #undef PERM_BE
 #undef PERM_LE
 
-static int sbc_enc_process_input_4s_be_neon(struct sbc_encoder_state *state,
-		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
-		int nsamples, int nchannels)
+static void sbc_enc_process_input_4s_be_neon(struct sbc_encoder_state *state,
+		const uint8_t *pcm, int nsamples, int nchannels)
 {
-	return sbc_enc_process_input_4s_neon_internal(
-		state->position, pcm, X, nsamples, nchannels, 1);
+	sbc_enc_process_input_4s_neon_internal(state, pcm, nsamples, nchannels, 1);
 }
 
-static int sbc_enc_process_input_4s_le_neon(struct sbc_encoder_state *state,
-		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
-		int nsamples, int nchannels)
+static void sbc_enc_process_input_4s_le_neon(struct sbc_encoder_state *state,
+		const uint8_t *pcm, int nsamples, int nchannels)
 {
-	return sbc_enc_process_input_4s_neon_internal(
-		state->position, pcm, X, nsamples, nchannels, 0);
+	sbc_enc_process_input_4s_neon_internal(state, pcm, nsamples, nchannels, 0);
 }
 
-static int sbc_enc_process_input_8s_be_neon(struct sbc_encoder_state *state,
-		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
-		int nsamples, int nchannels)
+static void sbc_enc_process_input_8s_be_neon(struct sbc_encoder_state *state,
+		const uint8_t *pcm, int nsamples, int nchannels)
 {
-	return sbc_enc_process_input_8s_neon_internal(
-		state->position, pcm, X, nsamples, nchannels, 1);
+	sbc_enc_process_input_8s_neon_internal(state, pcm, nsamples, nchannels, 1);
 }
 
-static int sbc_enc_process_input_8s_le_neon(struct sbc_encoder_state *state,
-		const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
-		int nsamples, int nchannels)
+static void sbc_enc_process_input_8s_le_neon(struct sbc_encoder_state *state,
+		const uint8_t *pcm, int nsamples, int nchannels)
 {
-	return sbc_enc_process_input_8s_neon_internal(
-		state->position, pcm, X, nsamples, nchannels, 0);
+	sbc_enc_process_input_8s_neon_internal(state, pcm, nsamples, nchannels, 0);
 }
 
 void sbc_init_primitives_neon(struct sbc_encoder_state *state)

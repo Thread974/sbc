@@ -1086,9 +1086,8 @@ SBC_EXPORT ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
 	struct sbc_priv *priv;
 	int samples;
 	ssize_t framelen;
-	int (*sbc_enc_process_input)(struct sbc_encoder_state *state,
-			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
-			int nsamples, int nchannels);
+	void (*sbc_enc_process_input)(struct sbc_encoder_state *state,
+			const uint8_t *pcm, int nsamples, int nchannels);
 
 	if (!sbc || !input)
 		return -EIO;
@@ -1144,9 +1143,8 @@ SBC_EXPORT ssize_t sbc_encode(sbc_t *sbc, const void *input, size_t input_len,
 				priv->enc_state.sbc_enc_process_input_4s_le;
 	}
 
-	priv->enc_state.position = sbc_enc_process_input(
-		&priv->enc_state, (const uint8_t *) input,
-		priv->enc_state.X, priv->frame.subbands * priv->frame.blocks,
+	sbc_enc_process_input(&priv->enc_state, (const uint8_t *) input,
+		priv->frame.subbands * priv->frame.blocks,
 		priv->frame.channels);
 
 	samples = sbc_analyze_audio(&priv->enc_state, &priv->frame);

@@ -53,18 +53,14 @@ struct sbc_encoder_state {
 			int16_t *x, int32_t *out, int out_stride);
 	/* Process input data (deinterleave, endian conversion, reordering),
 	 * depending on the number of subbands and input data byte order */
-	int (*sbc_enc_process_input_4s_le)(struct sbc_encoder_state *state,
-			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
-			int nsamples, int nchannels);
-	int (*sbc_enc_process_input_4s_be)(struct sbc_encoder_state *state,
-			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
-			int nsamples, int nchannels);
-	int (*sbc_enc_process_input_8s_le)(struct sbc_encoder_state *state,
-			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
-			int nsamples, int nchannels);
-	int (*sbc_enc_process_input_8s_be)(struct sbc_encoder_state *state,
-			const uint8_t *pcm, int16_t X[2][SBC_X_BUFFER_SIZE],
-			int nsamples, int nchannels);
+	void (*sbc_enc_process_input_4s_le)(struct sbc_encoder_state *state,
+			const uint8_t *pcm, int nsamples, int nchannels);
+	void (*sbc_enc_process_input_4s_be)(struct sbc_encoder_state *state,
+			const uint8_t *pcm, int nsamples, int nchannels);
+	void (*sbc_enc_process_input_8s_le)(struct sbc_encoder_state *state,
+			const uint8_t *pcm, int nsamples, int nchannels);
+	void (*sbc_enc_process_input_8s_be)(struct sbc_encoder_state *state,
+			const uint8_t *pcm, int nsamples, int nchannels);
 	/* Scale factors calculation */
 	void (*sbc_calc_scalefactors)(int32_t sb_sample_f[16][2][8],
 			uint32_t scale_factor[2][8],
