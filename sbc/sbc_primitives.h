@@ -40,6 +40,7 @@ struct sbc_encoder_state {
 	int position;
 	/* Number of consecutive blocks handled by the encoder */
 	int increment;
+	int odd;
 	int16_t SBC_ALIGNED X[2][SBC_X_BUFFER_SIZE];
 	/* Polyphase analysis filter for 4 subbands configuration,
 	 * it handles "increment" blocks at once */
