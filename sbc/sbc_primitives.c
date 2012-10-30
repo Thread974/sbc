@@ -309,8 +309,26 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 	#define PCM(i) (big_endian ? \
 		unaligned16_be(pcm + (i) * 2) : unaligned16_le(pcm + (i) * 2))
 
+	if (position % 16 == 8) {
+		position -= 8;
+		nsamples -= 8;
+		if (nchannels > 0) {
+			int16_t *x = &X[0][position];
+			x[0]  = PCM(0 + (15-8) * nchannels);
+			x[2]  = PCM(0 + (14-8) * nchannels);
+			x[3]  = PCM(0 + (8-8) * nchannels);
+			x[4]  = PCM(0 + (13-8) * nchannels);
+			x[5]  = PCM(0 + (9-8) * nchannels);
+			x[6]  = PCM(0 + (12-8) * nchannels);
+			x[7]  = PCM(0 + (10-8) * nchannels);
+			x[8]  = PCM(0 + (11-8) * nchannels);
+		}
+		/* mSBC is designed for 1 channel */
+		pcm += 16 * nchannels;
+	}
+
 	/* copy/permutate audio samples */
-	while ((nsamples -= 16) >= 0) {
+	while (nsamples >= 16) {
 		position -= 16;
 		if (nchannels > 0) {
 			int16_t *x = &X[0][position];
@@ -351,6 +369,23 @@ static SBC_ALWAYS_INLINE int sbc_encoder_process_input_s8_internal(
 			x[15] = PCM(1 + 2 * nchannels);
 		}
 		pcm += 32 * nchannels;
+		nsamples -= 16;
+	}
+
+	if (nsamples == 8) {
+		position -= 8;
+		if (nchannels > 0) {
+			int16_t *x = &X[0][position];
+			x[-7] = PCM(0 + 7 * nchannels);
+			x[1]  = PCM(0 + 3 * nchannels);
+			x[2]  = PCM(0 + 6 * nchannels);
+			x[3]  = PCM(0 + 0 * nchannels);
+			x[4]  = PCM(0 + 5 * nchannels);
+			x[5]  = PCM(0 + 1 * nchannels);
+			x[6]  = PCM(0 + 4 * nchannels);
+			x[7]  = PCM(0 + 2 * nchannels);
+		}
+		/* mSBC is designed for 1 channel */
 	}
 	#undef PCM
 
