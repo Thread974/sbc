@@ -295,10 +295,26 @@ static inline void sbc_analyze_4b_8s_iwmmxt(struct sbc_encoder_state *state,
 	sbc_analyze_eight_iwmmxt(x + 0, out, analysis_consts_fixed8_simd_even);
 }
 
+static inline void sbc_analyze_1b_8s_iwmmxt(struct sbc_encoder_state *state,
+		int16_t *x, int32_t *out, int out_stride)
+{
+	if (state->odd)
+		sbc_analyze_eight_iwmmxt(x, out,
+					analysis_consts_fixed8_simd_odd);
+	else
+		sbc_analyze_eight_iwmmxt(x, out,
+					analysis_consts_fixed8_simd_even);
+
+	state->odd = !state->odd;
+}
+
 void sbc_init_primitives_iwmmxt(struct sbc_encoder_state *state)
 {
 	state->sbc_analyze_4s = sbc_analyze_4b_4s_iwmmxt;
-	state->sbc_analyze_8s = sbc_analyze_4b_8s_iwmmxt;
+	if (state->increment == 1)
+		state->sbc_analyze_8s = sbc_analyze_1b_8s_iwmmxt;
+	else
+		state->sbc_analyze_8s = sbc_analyze_4b_8s_iwmmxt;
 	state->implementation_info = "IWMMXT";
 }
 
