@@ -568,5 +568,8 @@ void sbc_init_primitives(struct sbc_encoder_state *state)
 #endif
 #ifdef SBC_BUILD_WITH_NEON_SUPPORT
 	sbc_init_primitives_neon(state);
+
+	if (state->increment == 1)
+		state->sbc_analyze_8s = sbc_analyze_1b_8s_simd;
 #endif
 }
