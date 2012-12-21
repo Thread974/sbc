@@ -964,6 +964,23 @@ SBC_EXPORT int sbc_init(sbc_t *sbc, unsigned long flags)
 	return 0;
 }
 
+SBC_EXPORT int sbc_init_msbc(sbc_t *sbc, unsigned long flags)
+{
+	int err;
+	err = sbc_init(sbc, flags | SBC_MSBC);
+	if (err < 0)
+		return err;
+
+	sbc->frequency = SBC_FREQ_16000;
+	sbc->blocks = 15;
+	sbc->subbands = SBC_SB_8;
+	sbc->mode = SBC_MODE_MONO;
+	sbc->allocation = SBC_AM_LOUDNESS;
+	sbc->bitpool = 26;
+
+	return 0;
+}
+
 SBC_EXPORT ssize_t sbc_parse(sbc_t *sbc, const void *input, size_t input_len)
 {
 	return sbc_decode(sbc, input, input_len, NULL, 0, NULL);
