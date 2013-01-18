@@ -99,6 +99,7 @@ static inline void sbc_analyze_four_mmx(const int16_t *in, int32_t *out,
 		"\n"
 		"movq       %%mm0, (%3)\n"
 		"movq       %%mm2, 8(%3)\n"
+		"emms\n"
 		:
 		: "r" (in), "r" (consts), "r" (&round_c), "r" (out),
 			"i" (SBC_PROTO_FIXED4_SCALE)
@@ -241,6 +242,7 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 		"\n"
 		"movq       %%mm0, 16(%3)\n"
 		"movq       %%mm5, 24(%3)\n"
+		"emms\n"
 		:
 		: "r" (in), "r" (consts), "r" (&round_c), "r" (out),
 			"i" (SBC_PROTO_FIXED8_SCALE)
@@ -259,7 +261,7 @@ static inline void sbc_analyze_4b_4s_mmx(struct sbc_encoder_state *state,
 	out += out_stride;
 	sbc_analyze_four_mmx(x + 0, out, analysis_consts_fixed4_simd_even);
 
-	__asm__ volatile ("emms\n");
+	//__asm__ volatile ("emms\n");
 }
 
 static inline void sbc_analyze_4b_8s_mmx(struct sbc_encoder_state *state,
@@ -274,7 +276,7 @@ static inline void sbc_analyze_4b_8s_mmx(struct sbc_encoder_state *state,
 	out += out_stride;
 	sbc_analyze_eight_mmx(x + 0, out, analysis_consts_fixed8_simd_even);
 
-	__asm__ volatile ("emms\n");
+	//__asm__ volatile ("emms\n");
 }
 
 static inline void sbc_analyze_1b_8s_mmx(struct sbc_encoder_state *state,
@@ -287,7 +289,7 @@ static inline void sbc_analyze_1b_8s_mmx(struct sbc_encoder_state *state,
 
 	state->odd = !state->odd;
 
-	__asm__ volatile ("emms\n");
+	//__asm__ volatile ("emms\n");
 }
 
 static void sbc_calc_scalefactors_mmx(
