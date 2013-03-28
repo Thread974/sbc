@@ -24,6 +24,7 @@
  *
  */
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <limits.h>
 #include "sbc.h"

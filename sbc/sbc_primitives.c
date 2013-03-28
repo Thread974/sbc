@@ -24,6 +24,7 @@
  *
  */
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <limits.h>
 #include <string.h>
@@ -521,6 +522,8 @@ static int sbc_calc_scalefactors_j(
  */
 void sbc_init_primitives(struct sbc_encoder_state *state)
 {
+	state->odd = true;
+
 	/* Default implementation for analyze functions */
 	state->sbc_analyze_4s = sbc_analyze_4b_4s_simd;
 	state->sbc_analyze_8s = sbc_analyze_4b_8s_simd;
