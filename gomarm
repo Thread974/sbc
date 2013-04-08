@@ -1,0 +1,10 @@
+#!/bin/sh
+
+arm-linux-gnueabi-gcc -O2 -march=armv6 -static -I. -DVERSION=\"\" -o sbcdecarm src/sbcdec.c sbc/*.c
+arm-linux-gnueabi-gcc -O2 -march=armv6 -static -I. -DVERSION=\"\" -o sbcencarm src/sbcenc.c sbc/*.c
+arm-linux-gnueabi-gcc -O2 -march=armv6 -static -I. -DVERSION=\"\" -o sbcinfoarm src/sbcinfo.c
+/usr/bin/qemu-arm -cpu cortex-a8 ./sbcencarm -m -b26 -B16 -s8 sample.au > sample.au.msbc.arm
+/usr/bin/qemu-arm -cpu cortex-a8 ./sbcinfoarm sample.au.msbc.arm
+/usr/bin/qemu-arm -cpu cortex-a8 ./sbcdecarm -m -f sample.au.msbc.arm.au sample.au.msbc.arm
+mplayer sample.au.msbc.arm.au
+
