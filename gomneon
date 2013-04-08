@@ -1,0 +1,10 @@
+#!/bin/sh
+
+arm-linux-gnueabihf-gcc -O2 -march=armv7-a -mfpu=neon -static -I. -DVERSION=\"\" -o sbcdecneon src/sbcdec.c sbc/*.c
+arm-linux-gnueabihf-gcc -O2 -march=armv7-a -mfpu=neon -static -I. -DVERSION=\"\" -o sbcencneon src/sbcenc.c sbc/*.c
+arm-linux-gnueabihf-gcc -O2 -march=armv7-a -mfpu=neon -static -I. -DVERSION=\"\" -o sbcinfoneon src/sbcinfo.c
+/usr/bin/qemu-arm -cpu cortex-a8 ./sbcencneon -m -b26 -B16 -s8 sample.au > sample.au.msbc.neon
+/usr/bin/qemu-arm -cpu cortex-a8 ./sbcinfoneon sample.au.msbc.neon
+/usr/bin/qemu-arm -cpu cortex-a8 ./sbcdecneon -m -f sample.au.msbc.neon.au sample.au.msbc.neon
+mplayer sample.au.msbc.neon.au
+
